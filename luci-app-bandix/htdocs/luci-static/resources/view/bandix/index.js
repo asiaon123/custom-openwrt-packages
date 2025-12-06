@@ -133,13 +133,6 @@ var callStatus = rpc.declare({
     expect: {}
 });
 
-var callSetRateLimit = rpc.declare({
-    object: 'luci.bandix',
-    method: 'setRateLimit',
-    params: ['mac', 'wide_tx_rate_limit', 'wide_rx_rate_limit'],
-    expect: { success: true }
-});
-
 var callSetHostname = rpc.declare({
     object: 'luci.bandix',
     method: 'setHostname',
@@ -152,6 +145,61 @@ var callGetMetrics = rpc.declare({
     object: 'luci.bandix',
     method: 'getMetrics',
     params: ['mac'],
+    expect: {}
+});
+
+var callGetMetricsDay = rpc.declare({
+    object: 'luci.bandix',
+    method: 'getMetricsDay',
+    params: ['mac'],
+    expect: {}
+});
+
+var callGetMetricsWeek = rpc.declare({
+    object: 'luci.bandix',
+    method: 'getMetricsWeek',
+    params: ['mac'],
+    expect: {}
+});
+
+var callGetMetricsMonth = rpc.declare({
+    object: 'luci.bandix',
+    method: 'getMetricsMonth',
+    params: ['mac'],
+    expect: {}
+});
+
+// 定时限速 RPC
+var callGetScheduleLimits = rpc.declare({
+    object: 'luci.bandix',
+    method: 'getScheduleLimits',
+    expect: {}
+});
+
+var callSetScheduleLimit = rpc.declare({
+    object: 'luci.bandix',
+    method: 'setScheduleLimit',
+    params: ['mac', 'start_time', 'end_time', 'days', 'wide_tx_rate_limit', 'wide_rx_rate_limit'],
+    expect: { success: true }
+});
+
+var callDeleteScheduleLimit = rpc.declare({
+    object: 'luci.bandix',
+    method: 'deleteScheduleLimit',
+    params: ['mac', 'start_time', 'end_time', 'days'],
+    expect: { success: true }
+});
+
+// 版本和更新检查 RPC
+var callGetVersion = rpc.declare({
+    object: 'luci.bandix',
+    method: 'getVersion',
+    expect: {}
+});
+
+var callCheckUpdate = rpc.declare({
+    object: 'luci.bandix',
+    method: 'checkUpdate',
     expect: {}
 });
 
@@ -191,6 +239,67 @@ return view.extend({
                 display: flex;
                 align-items: center;
                 gap: 12px;
+            }
+            
+            .bandix-title-wrapper {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            
+            .bandix-version {
+                font-size: 0.875rem;
+                opacity: 0.5;
+                font-weight: 400;
+            }
+            
+            .bandix-version-wrapper {
+                display: inline-flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+            
+            .bandix-version-item {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .bandix-update-badge {
+                display: inline-block;
+                cursor: pointer;
+                padding: 2px 8px;
+                margin-left: 8px;
+                background-color: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                transition: all 0.2s ease;
+            }
+            
+            .bandix-update-badge:hover {
+                background-color: rgba(239, 68, 68, 0.2);
+                transform: translateY(-1px);
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .bandix-update-badge {
+                    background-color: rgba(239, 68, 68, 0.2);
+                    color: #f87171;
+                }
+                
+                .bandix-update-badge:hover {
+                    background-color: rgba(239, 68, 68, 0.3);
+                }
+            }
+            
+            /* 移动端隐藏版本信息和更新徽章 */
+            @media (max-width: 768px) {
+                .bandix-version-wrapper {
+                    display: none;
+                }
             }
             
             .device-mode-group {
@@ -238,6 +347,21 @@ return view.extend({
                 justify-content: space-between;
                 gap: 10px;
                 font-size: 0.875rem;
+            }
+            
+            /* 只在宽模式下应用警告样式 */
+            .bandix-alert.wide-theme {
+                background-color: rgba(251, 191, 36, 0.1);
+                border: 1px solid rgba(251, 191, 36, 0.3);
+                color: #92400e;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .bandix-alert.wide-theme {
+                    background-color: rgba(251, 191, 36, 0.15);
+                    border-color: rgba(251, 191, 36, 0.4);
+                    color: #fbbf24;
+                }
             }
             
             .bandix-alert-icon {
@@ -346,7 +470,7 @@ return view.extend({
             
             .bandix-table th:nth-child(1),
             .bandix-table td:nth-child(1) {
-                width: 25%;
+                width: 27%;
             }
             
             .bandix-table th:nth-child(2),
@@ -361,12 +485,18 @@ return view.extend({
             
             .bandix-table th:nth-child(4),
             .bandix-table td:nth-child(4) {
-                width: 15%;
+                width: 12.5%;
             }
             
             .bandix-table th:nth-child(5),
             .bandix-table td:nth-child(5) {
-                width: 9%;
+                width: 16.5%;
+            }
+            
+            .schedule-rules-info {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
             }
 
 			/* 类型联动的高亮与弱化 */
@@ -432,11 +562,12 @@ return view.extend({
                 color: #9ca3af;
             }
 
-            .device-last-online:hover .device-last-online-value {
+            /* 悬浮在整个设备信息区域时显示精确时间 */
+            .device-info:hover .device-last-online-value {
                 display: none;
             }
 
-            .device-last-online:hover .device-last-online-exact {
+            .device-info:hover .device-last-online-exact {
                 display: inline;
             }
             
@@ -704,6 +835,206 @@ return view.extend({
                 outline: none;
             }
             
+            /* Tab 切换样式 */
+            .modal-tabs {
+                display: flex;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .modal-tabs {
+                    border-bottom-color: rgba(255, 255, 255, 0.15);
+                }
+            }
+            
+            .modal-tab {
+                flex: 1;
+                padding: 12px 16px;
+                text-align: center;
+                cursor: pointer;
+                border: none;
+                background: transparent;
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: rgba(0, 0, 0, 0.6);
+                transition: all 0.2s ease;
+                border-bottom: 2px solid transparent;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .modal-tab {
+                    color: rgba(255, 255, 255, 0.6);
+                }
+            }
+            
+            .modal-tab:hover {
+                color: rgba(0, 0, 0, 0.8);
+                background-color: rgba(0, 0, 0, 0.02);
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .modal-tab:hover {
+                    color: rgba(255, 255, 255, 0.8);
+                    background-color: rgba(255, 255, 255, 0.05);
+                }
+            }
+            
+            .modal-tab.active {
+                color: #3b82f6;
+                border-bottom-color: #3b82f6;
+                font-weight: 600;
+            }
+            
+            .modal-tab-content {
+                display: none;
+            }
+            
+            .modal-tab-content.active {
+                display: block;
+            }
+            
+            .schedule-time-row {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+            
+            .schedule-time-input {
+                flex: 1;
+                border-radius: 4px;
+                padding: 8px 12px;
+                font-size: 0.875rem;
+                transition: border-color 0.15s ease;
+                box-sizing: border-box;
+            }
+            
+            .schedule-days {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+            }
+            
+            .schedule-day-btn {
+                flex: 1;
+                min-width: 40px;
+                padding: 6px 8px;
+                border-radius: 4px;
+                border: 1px solid rgba(0, 0, 0, 0.2);
+                background: transparent;
+                cursor: pointer;
+                font-size: 0.75rem;
+                transition: all 0.15s ease;
+                text-align: center;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .schedule-day-btn {
+                    border-color: rgba(255, 255, 255, 0.2);
+                }
+            }
+            
+            .schedule-day-btn:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .schedule-day-btn:hover {
+                    background-color: rgba(255, 255, 255, 0.05);
+                }
+            }
+            
+            .schedule-day-btn.active {
+                background-color: #3b82f6;
+                color: white;
+                border-color: #3b82f6;
+            }
+            
+            .schedule-rules-list {
+                min-height: 200px;
+                max-height: 400px;
+                overflow-y: auto;
+                border: 1px dashed rgba(0, 0, 0, 0.2);
+                border-radius: 4px;
+                padding: 16px;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .schedule-rules-list {
+                    border-color: rgba(255, 255, 255, 0.2);
+                }
+            }
+            
+            .schedule-rules-empty {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 200px;
+                text-align: center;
+                color: rgba(0, 0, 0, 0.5);
+                font-size: 0.875rem;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .schedule-rules-empty {
+                    color: rgba(255, 255, 255, 0.5);
+                }
+            }
+            
+            .schedule-rule-item {
+                padding: 12px;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                border-radius: 4px;
+                margin-bottom: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .schedule-rule-item {
+                    border-color: rgba(255, 255, 255, 0.15);
+                }
+            }
+            
+            .schedule-rule-info {
+                flex: 1;
+            }
+            
+            .schedule-rule-time {
+                font-weight: 600;
+                margin-bottom: 4px;
+            }
+            
+            .schedule-rule-days {
+                font-size: 0.75rem;
+                opacity: 0.7;
+                margin-bottom: 4px;
+            }
+            
+            .schedule-rule-limits {
+                font-size: 0.75rem;
+                opacity: 0.7;
+            }
+            
+            .schedule-rule-delete {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+                cursor: pointer;
+                border-radius: 4px;
+                border: 1px solid rgba(239, 68, 68, 0.3);
+                background-color: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
+                transition: all 0.15s ease;
+            }
+            
+            .schedule-rule-delete:hover {
+                background-color: rgba(239, 68, 68, 0.2);
+            }
+            
             .device-summary {
                 border-radius: 4px;
                 padding: 12px;
@@ -741,11 +1072,137 @@ return view.extend({
                 pointer-events: none;
             }
 
+            /* 确认对话框 */
+            .confirm-dialog {
+                max-width: 400px;
+                width: 90%;
+            }
+            
+            .confirm-dialog .modal-body {
+                padding: 24px;
+            }
+            
+            .confirm-dialog-title {
+                font-size: 1.125rem;
+                font-weight: 600;
+                margin-bottom: 12px;
+            }
+            
+            .confirm-dialog-message {
+                font-size: 0.875rem;
+                line-height: 1.5;
+                color: rgba(0, 0, 0, 0.7);
+                margin-bottom: 20px;
+            }
+            
+            @media (prefers-color-scheme: dark) {
+                .confirm-dialog-message {
+                    color: rgba(255, 255, 255, 0.7);
+                }
+            }
+            
+            .confirm-dialog-footer {
+                display: flex;
+                gap: 10px;
+                justify-content: flex-end;
+            }
+
             /* 历史趋势 */
             .history-header {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
+                margin-bottom: 16px;
+            }
+            .history-header-left {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+            }
+            .history-tabs {
+                display: inline-flex;
+                background-color: rgba(0, 0, 0, 0.04);
+                border-radius: 8px;
+                padding: 3px;
+                gap: 2px;
+            }
+            @media (prefers-color-scheme: dark) {
+                .history-tabs {
+                    background-color: rgba(255, 255, 255, 0.08);
+                }
+            }
+            .history-tab {
+                padding: 6px 16px;
+                text-align: center;
+                cursor: pointer;
+                border: none;
+                background: transparent;
+                font-size: 0.8125rem;
+                font-weight: 500;
+                color: rgba(0, 0, 0, 0.65);
+                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                border-radius: 6px;
+                white-space: nowrap;
+                position: relative;
+            }
+            @media (prefers-color-scheme: dark) {
+                .history-tab {
+                    color: rgba(255, 255, 255, 0.65);
+                }
+            }
+            .history-tab:hover:not(.active) {
+                color: rgba(0, 0, 0, 0.85);
+                background-color: rgba(0, 0, 0, 0.06);
+            }
+            @media (prefers-color-scheme: dark) {
+                .history-tab:hover:not(.active) {
+                    color: rgba(255, 255, 255, 0.85);
+                    background-color: rgba(255, 255, 255, 0.12);
+                }
+            }
+            .history-tab.active {
+                background-color: #ffffff;
+                color: #3b82f6;
+                font-weight: 600;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+            }
+            @media (prefers-color-scheme: dark) {
+                .history-tab.active {
+                    background-color: rgba(59, 130, 246, 0.15);
+                    color: #60a5fa;
+                    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+                }
+            }
+            @media (max-width: 768px) {
+                .history-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+                .history-header-left {
+                    width: 100%;
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+                .history-tabs {
+                    width: 100%;
+                    padding: 2px;
+                }
+                .history-tab {
+                    flex: 1;
+                    padding: 8px 6px;
+                    font-size: 0.75rem;
+                }
+                /* 移动端隐藏 Realtime tab */
+                .history-tab[data-range="realtime"] {
+                    display: none !important;
+                }
+                .history-tab[data-range="day"],
+                .history-tab[data-range="week"],
+                .history-tab[data-range="month"] {
+                    display: none !important;
+                }
             }
             .history-controls {
                 display: flex;
@@ -754,7 +1211,7 @@ return view.extend({
                 align-items: center;
                 padding: 12px 16px;
             }
-            .history-controls .cbi-select {
+            .history-controls .cbi-input-select {
                 width: auto;
                 min-width: 160px;
             }
@@ -763,16 +1220,290 @@ return view.extend({
                 position: relative;
             }
             .history-legend {
-                margin-left: auto;
                 display: flex;
                 align-items: center;
+                justify-content: center;
                 gap: 12px;
+                padding-right: 16px;
             }
             .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.875rem; }
             .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
             .legend-up { background-color: #f97316; }
             .legend-down { background-color: #06b6d4; }
             #history-canvas { width: 100%; height: 200px; display: block; } /* 变窄的高度 */
+            
+            /* 移动端优化 */
+            @media (max-width: 768px) {
+                .bandix-alert {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 8px;
+                }
+                
+                .bandix-alert > div:first-child {
+                    width: 100%;
+                }
+                
+                .bandix-alert #device-count {
+                    width: 100%;
+                    text-align: left;
+                }
+                
+                #history-canvas { 
+                    height: 300px; /* 移动端增加高度 */
+                }
+                .history-controls {
+                    flex-direction: column;
+                    align-items: stretch;
+                    gap: 8px;
+                    padding: 12px;
+                }
+                .history-controls .cbi-input-select {
+                    width: 100%;
+                    min-width: 0;
+                }
+                .history-controls .form-label {
+                    margin-bottom: 4px;
+                }
+                .history-legend {
+                    margin-left: 0;
+                    margin-top: 8px;
+                    width: 100%;
+                    justify-content: center;
+                    padding-right: 0;
+                }
+                .history-header {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 8px;
+                }
+                .history-card-body {
+                    padding: 12px;
+                }
+                .device-card {
+                    margin-left: 12px;
+                    margin-right: 12px;
+                }
+                .history-tooltip {
+                    width: calc(100vw - 32px);
+                    max-width: 320px;
+                    font-size: 0.75rem;
+                    padding: 10px;
+                }
+                .history-tooltip .ht-kpis {
+                    grid-template-columns: 1fr;
+                    gap: 8px;
+                }
+                .history-tooltip .ht-kpi .ht-k-value {
+                    font-size: 0.875rem;
+                }
+                #history-retention {
+                    display: none !important;
+                }
+                #history-time-range {
+                    display: none !important;
+                }
+                
+                /* 移动端隐藏设备模式切换按钮 */
+                .device-mode-group {
+                    display: none !important;
+                }
+                
+                /* 移动端设备列表卡片式布局 */
+                .bandix-table {
+                    display: none; /* 移动端隐藏表格 */
+                }
+                
+                .device-list-cards {
+                    display: block;
+                }
+                
+                .device-card {
+                    border: 1px solid rgba(0, 0, 0, 0.1);
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                }
+                
+                @media (prefers-color-scheme: dark) {
+                    .device-card {
+                        border-color: rgba(255, 255, 255, 0.15);
+                    }
+                }
+                
+                .device-card-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 12px;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                }
+                
+                @media (prefers-color-scheme: dark) {
+                    .device-card-header {
+                        border-bottom-color: rgba(255, 255, 255, 0.15);
+                    }
+                }
+                
+                .device-card-name {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                
+                .device-card-name .device-status {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    display: inline-block;
+                    flex-shrink: 0;
+                }
+                
+                .device-card-name .device-status.online {
+                    background-color: #10b981;
+                }
+                
+                .device-card-name .device-status.offline {
+                    background-color: #9ca3af;
+                }
+                
+                .device-card-ip {
+                    font-size: 0.75rem;
+                    opacity: 0.7;
+                    margin-top: 4px;
+                }
+                
+                .device-card-action {
+                    flex-shrink: 0;
+                }
+                
+                .device-card-action .cbi-button {
+                    padding: 6px 12px;
+                    font-size: 0.875rem;
+                }
+                
+                .device-card-content {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 12px;
+                }
+                
+                .device-card-section {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+                
+                .device-card-section-label {
+                    font-size: 0.75rem;
+                    opacity: 0.7;
+                    font-weight: 500;
+                    margin-bottom: 4px;
+                }
+                
+                .device-card-traffic {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+                
+                .device-card-traffic-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    font-size: 0.875rem;
+                }
+                
+                /* LAN流量样式（移动端直接显示） */
+                .device-card-lan {
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid rgba(0, 0, 0, 0.1);
+                }
+                
+                @media (prefers-color-scheme: dark) {
+                    .device-card-lan {
+                        border-top-color: rgba(255, 255, 255, 0.15);
+                    }
+                }
+                
+                /* 规则显示样式 */
+                .device-card-rules {
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid rgba(0, 0, 0, 0.1);
+                }
+                
+                @media (prefers-color-scheme: dark) {
+                    .device-card-rules {
+                        border-top-color: rgba(255, 255, 255, 0.15);
+                    }
+                }
+                
+                .device-card-rules-content {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                    padding: 8px 0;
+                }
+                
+                .device-card-rules-empty {
+                    font-size: 0.75rem;
+                    opacity: 0.6;
+                    padding: 4px 0;
+                }
+                
+                .device-card-rules-count {
+                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    color: inherit;
+                    margin-bottom: 2px;
+                }
+                
+                .device-card-rules-active-time {
+                    font-size: 0.8125rem;
+                    color: #10b981;
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    line-height: 1.4;
+                }
+                
+                .device-card-rules-limits {
+                    font-size: 0.75rem;
+                    opacity: 0.8;
+                    margin-top: 2px;
+                    word-break: break-word;
+                }
+                
+                .device-card-rules-more {
+                    font-size: 0.7rem;
+                    opacity: 0.6;
+                    margin-top: 2px;
+                }
+                
+                .device-card-rules-inactive {
+                    font-size: 0.8125rem;
+                    opacity: 0.5;
+                    margin-top: 4px;
+                }
+            }
+            
+            /* PC端显示表格，隐藏卡片 */
+            @media (min-width: 769px) {
+                .bandix-table {
+                    display: table;
+                }
+                
+                .device-list-cards {
+                    display: none;
+                }
+            }
 			.history-tooltip {
 				position: fixed;
                 display: none;
@@ -812,6 +1543,82 @@ return view.extend({
 			.history-tooltip .ht-kpi.up .ht-k-value { color: #f97316; }
 			.history-tooltip .ht-divider { height: 1px; background-color: currentColor; opacity: 0.3; margin: 8px 0; }
 			.history-tooltip .ht-section-title { font-weight: 600; font-size: 0.75rem; opacity: 0.7; margin: 4px 0 6px 0; }
+			
+			/* Schedule Rules Tooltip */
+			.schedule-rules-tooltip {
+				position: fixed;
+				display: none;
+				width: 360px;
+				max-width: 90vw;
+				box-sizing: border-box;
+				padding: 12px;
+				z-index: 10000;
+				pointer-events: none;
+				font-size: 0.8125rem;
+				line-height: 1.5;
+				background-color: rgba(255, 255, 255, 0.98);
+				border: 1px solid rgba(0, 0, 0, 0.1);
+				border-radius: 6px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				color: #1f2937;
+			}
+			
+			@media (prefers-color-scheme: dark) {
+				.schedule-rules-tooltip {
+					background-color: rgba(30, 30, 30, 0.98);
+					border-color: rgba(255, 255, 255, 0.2);
+					box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+					color: #e5e7eb;
+				}
+			}
+			
+			.schedule-rules-tooltip .srt-title {
+				font-weight: 700;
+				margin-bottom: 8px;
+				font-size: 0.875rem;
+			}
+			
+			.schedule-rules-tooltip .srt-rule-item {
+				padding: 8px 0;
+				border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+			}
+			
+			@media (prefers-color-scheme: dark) {
+				.schedule-rules-tooltip .srt-rule-item {
+					border-bottom-color: rgba(255, 255, 255, 0.15);
+				}
+			}
+			
+			.schedule-rules-tooltip .srt-rule-item:last-child {
+				border-bottom: none;
+			}
+			
+			.schedule-rules-tooltip .srt-rule-time {
+				font-weight: 600;
+				margin-bottom: 4px;
+				font-size: 0.75rem;
+			}
+			
+			.schedule-rules-tooltip .srt-rule-days {
+				font-size: 0.75rem;
+				font-weight: 500;
+				opacity: 0.7;
+				margin-bottom: 4px;
+			}
+			
+			.schedule-rules-tooltip .srt-rule-limits {
+				font-size: 0.875rem;
+				font-weight: 600;
+				opacity: 0.8;
+			}
+			
+			.schedule-rules-tooltip .srt-rule-limits .srt-arrow {
+				font-size: 0.75rem;
+				font-weight: bold;
+			}
+			
+			.schedule-rules-info {
+			}
         `);
 
         document.head.appendChild(style);
@@ -819,22 +1626,47 @@ return view.extend({
         var view = E('div', { 'class': 'bandix-container' }, [
             // 头部
             E('div', { 'class': 'bandix-header' }, [
-                E('h1', { 'class': 'bandix-title' }, _('Bandix Traffic Monitor'))
+                E('div', { 'class': 'bandix-title-wrapper' }, [
+                    E('h1', { 'class': 'bandix-title' }, _('Bandix Traffic Monitor')),
+                    E('div', { 'class': 'bandix-version-wrapper' }, [
+                        E('div', { 'class': 'bandix-version-item' }, [
+                            E('span', { 'class': 'bandix-version', 'id': 'bandix-luci-version' }, ''),
+                        ]),
+                        E('div', { 'class': 'bandix-version-item' }, [
+                            E('span', { 'class': 'bandix-version', 'id': 'bandix-core-version' }, ''),
+                        ]),
+                        E('span', { 'class': 'bandix-update-badge', 'id': 'bandix-update-badge', 'style': 'display: none;' }, _('Update available'))
+                    ])
+                ])
             ]),
 
             // 警告提示（包含在线设备数）
-            E('div', { 'class': 'bandix-alert' }, [
-                E('span', {}, _('Rate limiting only applies to WAN traffic.')),
+            E('div', { 
+                'class': 'bandix-alert' + (getThemeType() === 'wide' ? ' wide-theme' : '')
+            }, [
+                E('div', { 'style': 'display: flex; align-items: center; gap: 8px;' }, [
+                    E('span', { 'style': 'font-size: 1rem;' }, '⚠'),
+                    E('span', {}, _('Rate limiting only applies to WAN traffic.'))
+                ]),
                 E('div', { 'class': 'bandix-badge', 'id': 'device-count' }, _('Online Devices') + ': 0 / 0')
             ]),
 
             // 统计卡片
             E('div', { 'class': 'stats-grid', 'id': 'stats-grid' }),
 
-            // 历史趋势卡片（无时间范围筛选）
+            // 历史趋势卡片（带时间范围 tab 切换）
             E('div', { 'class': 'cbi-section', 'id': 'history-card' }, [
-                E('h3', { 'class': 'history-header', 'style': 'display: flex; align-items: center; justify-content: space-between;' }, [
-                    E('span', {}, _('Traffic History')),
+                E('div', { 'class': 'history-header' }, [
+                    E('div', { 'class': 'history-header-left' }, [
+                        // E('h3', { 'style': 'margin: 0; font-size: 1rem; font-weight: 600;' }, _('Traffic History')),
+                        // 时间范围 Tab 切换
+                        E('div', { 'class': 'history-tabs' }, [
+                            E('button', { 'class': 'history-tab active', 'data-range': 'realtime', 'id': 'history-tab-realtime' }, _('Realtime')),
+                            E('button', { 'class': 'history-tab', 'data-range': 'day', 'id': 'history-tab-day' }, _('Last 24 Hours')),
+                            E('button', { 'class': 'history-tab', 'data-range': 'week', 'id': 'history-tab-week' }, _('Last 7 Days')),
+                            E('button', { 'class': 'history-tab', 'data-range': 'month', 'id': 'history-tab-month' }, _('Last 30 Days'))
+                        ])
+                    ]),
                     E('div', { 'class': 'history-legend' }, [
                         E('div', { 'class': 'legend-item' }, [
                             E('span', { 'class': 'legend-dot legend-up' }),
@@ -848,16 +1680,17 @@ return view.extend({
                 ]),
                 E('div', { 'class': 'history-controls' }, [
                     E('label', { 'class': 'form-label', 'style': 'margin: 0;' }, _('Select Device')),
-                    E('select', { 'class': 'cbi-select', 'id': 'history-device-select' }, [
+                    E('select', { 'class': 'cbi-input-select', 'id': 'history-device-select' }, [
                         E('option', { 'value': '' }, _('All Devices'))
                     ]),
                     E('label', { 'class': 'form-label', 'style': 'margin: 0;' }, _('Type')),
-                    E('select', { 'class': 'cbi-select', 'id': 'history-type-select' }, [
+                    E('select', { 'class': 'cbi-input-select', 'id': 'history-type-select' }, [
                         E('option', { 'value': 'total' }, _('Total')),
                         E('option', { 'value': 'lan' }, _('LAN Traffic')),
                         E('option', { 'value': 'wan' }, _('WAN Traffic'))
                     ]),
                     E('span', { 'class': 'bandix-badge', 'id': 'history-zoom-level', 'style': 'margin-left: 16px; display: none;' }, ''),
+                    E('span', { 'class': 'bandix-badge', 'id': 'history-time-range', 'style': 'margin-left: 16px; display: none;' }, ''),
                     E('span', { 'class': 'bandix-badge', 'id': 'history-retention', 'style': 'margin-left: auto;' }, '')
                 ]),
                 E('div', { 'class': 'history-card-body' }, [
@@ -898,6 +1731,59 @@ return view.extend({
             ])
         ]);
 
+        // 创建全局的 Schedule Rules Tooltip 元素
+        var scheduleRulesTooltip = E('div', { 'class': 'schedule-rules-tooltip', 'id': 'schedule-rules-tooltip' });
+        document.body.appendChild(scheduleRulesTooltip);
+        
+        // 构建规则列表的 HTML（用于 tooltip）
+        function buildScheduleRulesTooltipHtml(allRules, activeRules, speedUnit) {
+            if (!allRules || allRules.length === 0) {
+                return '';
+            }
+            
+            var lines = [];
+            lines.push('<div class="srt-title">' + _('Schedule Rules') + ' (' + allRules.length + ')</div>');
+            
+            allRules.forEach(function(rule, index) {
+                var startTime = rule.time_slot && rule.time_slot.start ? rule.time_slot.start : '';
+                var endTime = rule.time_slot && rule.time_slot.end ? rule.time_slot.end : '';
+                var days = rule.time_slot && rule.time_slot.days ? rule.time_slot.days : [];
+                
+                var dayNames = {
+                    1: _('Mon'),
+                    2: _('Tue'),
+                    3: _('Wed'),
+                    4: _('Thu'),
+                    5: _('Fri'),
+                    6: _('Sat'),
+                    7: _('Sun')
+                };
+                var daysText = days.length > 0 ? days.map(function(d) { return dayNames[d] || d; }).join(', ') : '-';
+                
+                var uploadLimit = rule.wide_tx_rate_limit || 0;
+                var downloadLimit = rule.wide_rx_rate_limit || 0;
+                
+                // 使用 isRuleActive 函数检查规则是否激活
+                var isActive = isRuleActive(rule);
+                
+                // 箭头固定颜色（橙色和青色），样式与 WAN 字段一致
+                var uploadLimitText = '<span class="srt-arrow" style="color: #f97316;">↑</span>' + (uploadLimit > 0 ? formatByterate(uploadLimit, speedUnit) : _('Unlimited'));
+                var downloadLimitText = '<span class="srt-arrow" style="color: #06b6d4;">↓</span>' + (downloadLimit > 0 ? formatByterate(downloadLimit, speedUnit) : _('Unlimited'));
+                
+                var activeMark = isActive ? '<span style="color: #10b981; margin-right: 4px;">●</span>' : '';
+                
+                lines.push(
+                    '<div class="srt-rule-item">' +
+                        '<div class="srt-rule-time">' + activeMark + startTime + ' - ' + endTime + '</div>' +
+                        '<div class="srt-rule-days">' + daysText + '</div>' +
+                        '<div class="srt-rule-limits">' + uploadLimitText + ' ' + downloadLimitText + '</div>' +
+                    '</div>'
+                );
+            });
+            
+            return lines.join('');
+        }
+        
         // 设备信息模式切换
         var deviceModeButtons = view.querySelectorAll('.device-mode-btn');
         
@@ -927,41 +1813,394 @@ return view.extend({
         // 创建限速设置模态框
         var modal = E('div', { 'class': 'modal-overlay', 'id': 'rate-limit-modal' }, [
             E('div', { 'class': 'modal' }, [
-                E('div', { 'class': 'modal-header' }, [
-                    E('h3', { 'class': 'modal-title' }, _('Device Settings'))
-                ]),
+                // E('div', { 'class': 'modal-header' }, [
+                //     E('h3', { 'class': 'modal-title' }, _('Device Settings'))
+                // ]),
                 E('div', { 'class': 'modal-body' }, [
                     E('div', { 'class': 'device-summary', 'id': 'modal-device-summary' }),
                     E('div', { 'class': 'form-group' }, [
                         E('label', { 'class': 'form-label' }, _('Hostname')),
-                        E('input', { 'type': 'text', 'class': 'form-input', 'id': 'device-hostname-input', 'placeholder': _('Please enter hostname') }),
+                        E('div', { 'style': 'display: flex; gap: 8px; align-items: center;' }, [
+                            E('input', { 'type': 'text', 'class': 'form-input', 'id': 'device-hostname-input', 'placeholder': _('Please enter hostname'), 'style': 'flex: 1;' }),
+                            E('button', { 'class': 'cbi-button cbi-button-positive', 'id': 'hostname-save-btn', 'style': 'flex-shrink: 0;' }, _('Save'))
+                        ]),
                         E('div', { 'style': 'font-size: 0.75rem; color: #6b7280; margin-top: 4px;' }, _('Set Hostname'))
                     ]),
-                    E('div', { 'class': 'form-group' }, [
-                        E('label', { 'class': 'form-label' }, _('Upload Limit')),
-                        E('div', { 'style': 'display: flex; gap: 8px;' }, [
-                            E('input', { 'type': 'number', 'class': 'form-input', 'id': 'upload-limit-value', 'min': '0', 'step': '1', 'placeholder': '0' }),
-                            E('select', { 'class': 'cbi-select', 'id': 'upload-limit-unit', 'style': 'width: 100px;' })
+                    // 定时限速
+                    E('div', { 'id': 'schedule-limit-tab' }, [
+                        // 描述和添加规则按钮
+                        E('div', { 'style': 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;' }, [
+                            E('span', { 'style': 'font-size: 0.875rem; opacity: 0.7;' }, _('Set rate limit rules for different time periods')),
+                            E('button', { 
+                                'type': 'button',
+                                'class': 'cbi-button cbi-button-action',
+                                'id': 'schedule-add-rule-btn',
+                                'style': 'display: flex; align-items: center; gap: 4px;'
+                            }, [
+                                E('span', {}, '+'),
+                                _('Add Rule')
+                            ])
                         ]),
-                        E('div', { 'style': 'font-size: 0.75rem; color: #6b7280; margin-top: 4px;' }, _('Tip: Enter 0 for unlimited'))
-                    ]),
-                    E('div', { 'class': 'form-group' }, [
-                        E('label', { 'class': 'form-label' }, _('Download Limit')),
-                        E('div', { 'style': 'display: flex; gap: 8px;' }, [
-                            E('input', { 'type': 'number', 'class': 'form-input', 'id': 'download-limit-value', 'min': '0', 'step': '1', 'placeholder': '0' }),
-                            E('select', { 'class': 'cbi-select', 'id': 'download-limit-unit', 'style': 'width: 100px;' })
-                        ]),
-                        E('div', { 'style': 'font-size: 0.75rem; color: #6b7280; margin-top: 4px;' }, _('Tip: Enter 0 for unlimited'))
+                        // 规则列表区域
+                        E('div', { 'class': 'schedule-rules-list', 'id': 'schedule-rules-list' })
                     ])
                 ]),
                 E('div', { 'class': 'modal-footer' }, [
-                    E('button', { 'class': 'cbi-button cbi-button-reset', 'id': 'modal-cancel' }, _('Cancel')),
-                    E('button', { 'class': 'cbi-button cbi-button-positive', 'id': 'modal-save' }, _('Save'))
+                    E('button', { 'class': 'cbi-button cbi-button-reset', 'id': 'modal-close' }, _('Close'))
                 ])
             ])
         ]);
 
         document.body.appendChild(modal);
+
+        // 创建添加规则模态框
+        var addRuleModal = E('div', { 'class': 'modal-overlay', 'id': 'add-rule-modal' }, [
+            E('div', { 'class': 'modal' }, [
+                E('div', { 'class': 'modal-header' }, [
+                    E('h3', { 'class': 'modal-title' }, _('Add Schedule Rule'))
+                ]),
+                E('div', { 'class': 'modal-body' }, [
+                    E('div', { 'class': 'form-group' }, [
+                        E('label', { 'class': 'form-label' }, _('Time Slot')),
+                        E('div', { 'class': 'schedule-time-row' }, [
+                            E('input', { 'type': 'time', 'class': 'schedule-time-input', 'id': 'add-rule-start-time' }),
+                            E('span', {}, ' - '),
+                            E('input', { 'type': 'time', 'class': 'schedule-time-input', 'id': 'add-rule-end-time' })
+                        ])
+                    ]),
+                    E('div', { 'class': 'form-group' }, [
+                        E('label', { 'class': 'form-label' }, _('Days of Week')),
+                        E('div', { 'class': 'schedule-days', 'id': 'add-rule-days' }, [
+                            E('button', { 'type': 'button', 'class': 'schedule-day-btn', 'data-day': '1' }, _('Mon')),
+                            E('button', { 'type': 'button', 'class': 'schedule-day-btn', 'data-day': '2' }, _('Tue')),
+                            E('button', { 'type': 'button', 'class': 'schedule-day-btn', 'data-day': '3' }, _('Wed')),
+                            E('button', { 'type': 'button', 'class': 'schedule-day-btn', 'data-day': '4' }, _('Thu')),
+                            E('button', { 'type': 'button', 'class': 'schedule-day-btn', 'data-day': '5' }, _('Fri')),
+                            E('button', { 'type': 'button', 'class': 'schedule-day-btn', 'data-day': '6' }, _('Sat')),
+                            E('button', { 'type': 'button', 'class': 'schedule-day-btn', 'data-day': '7' }, _('Sun'))
+                        ])
+                    ]),
+                    E('div', { 'class': 'form-group' }, [
+                        E('label', { 'class': 'form-label' }, _('Upload Limit')),
+                        E('div', { 'style': 'display: flex; gap: 8px;' }, [
+                            E('input', { 'type': 'number', 'class': 'form-input', 'id': 'add-rule-upload-limit-value', 'min': '0', 'step': '1', 'placeholder': '0' }),
+                            E('select', { 'class': 'cbi-input-select', 'id': 'add-rule-upload-limit-unit', 'style': 'width: 100px;' })
+                        ]),
+                        E('div', { 'style': 'font-size: 0.75rem; color: #6b7280; margin-top: 4px;' }, _('Tip: Enter 0 for unlimited'))
+                    ]),
+                    E('div', { 'class': 'form-group', 'style': 'margin-bottom: 0;' }, [
+                        E('label', { 'class': 'form-label' }, _('Download Limit')),
+                        E('div', { 'style': 'display: flex; gap: 8px;' }, [
+                            E('input', { 'type': 'number', 'class': 'form-input', 'id': 'add-rule-download-limit-value', 'min': '0', 'step': '1', 'placeholder': '0' }),
+                            E('select', { 'class': 'cbi-input-select', 'id': 'add-rule-download-limit-unit', 'style': 'width: 100px;' })
+                        ]),
+                        E('div', { 'style': 'font-size: 0.75rem; color: #6b7280; margin-top: 4px;' }, _('Tip: Enter 0 for unlimited'))
+                    ])
+                ]),
+                E('div', { 'class': 'modal-footer' }, [
+                    E('button', { 'class': 'cbi-button cbi-button-reset', 'id': 'add-rule-cancel' }, _('Cancel')),
+                    E('button', { 'class': 'cbi-button cbi-button-positive', 'id': 'add-rule-save' }, _('Add'))
+                ])
+            ])
+        ]);
+
+        document.body.appendChild(addRuleModal);
+
+        // 创建确认对话框
+        var confirmDialog = E('div', { 'class': 'modal-overlay', 'id': 'confirm-dialog-modal' }, [
+            E('div', { 'class': 'modal confirm-dialog' }, [
+                E('div', { 'class': 'modal-body' }, [
+                    E('div', { 'class': 'confirm-dialog-title', 'id': 'confirm-dialog-title' }, _('Confirm')),
+                    E('div', { 'class': 'confirm-dialog-message', 'id': 'confirm-dialog-message' }, ''),
+                    E('div', { 'class': 'confirm-dialog-footer' }, [
+                        E('button', { 'class': 'cbi-button cbi-button-reset', 'id': 'confirm-dialog-cancel' }, _('Cancel')),
+                        E('button', { 'class': 'cbi-button cbi-button-negative', 'id': 'confirm-dialog-confirm' }, _('Confirm'))
+                    ])
+                ])
+            ])
+        ]);
+
+        document.body.appendChild(confirmDialog);
+
+        // 确认对话框相关变量
+        var confirmDialogCallback = null;
+
+        // 显示确认对话框
+        function showConfirmDialog(title, message, onConfirm) {
+            document.getElementById('confirm-dialog-title').textContent = title || _('Confirm');
+            document.getElementById('confirm-dialog-message').textContent = message || '';
+            confirmDialogCallback = onConfirm;
+            
+            // 应用主题颜色
+            try {
+                var cbiSection = document.querySelector('.cbi-section');
+                var targetElement = cbiSection || document.querySelector('.main') || document.body;
+                var computedStyle = window.getComputedStyle(targetElement);
+                var bgColor = computedStyle.backgroundColor;
+                var textColor = computedStyle.color;
+                
+                var modalElement = confirmDialog.querySelector('.modal');
+                
+                if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                    var rgbaMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                    if (rgbaMatch) {
+                        var r = parseInt(rgbaMatch[1]);
+                        var g = parseInt(rgbaMatch[2]);
+                        var b = parseInt(rgbaMatch[3]);
+                        var alpha = rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1;
+                        
+                        if (alpha < 0.95) {
+                            modalElement.style.backgroundColor = 'rgb(' + r + ', ' + g + ', ' + b + ')';
+                        } else {
+                            modalElement.style.backgroundColor = bgColor;
+                        }
+                    } else {
+                        modalElement.style.backgroundColor = bgColor;
+                    }
+                }
+                
+                if (textColor && textColor !== 'rgba(0, 0, 0, 0)') {
+                    modalElement.style.color = textColor;
+                }
+            } catch(e) {}
+            
+            confirmDialog.classList.add('show');
+        }
+
+        // 隐藏确认对话框
+        function hideConfirmDialog() {
+            confirmDialog.classList.remove('show');
+            confirmDialogCallback = null;
+        }
+
+        // 确认对话框事件处理
+        document.getElementById('confirm-dialog-confirm').addEventListener('click', function() {
+            if (confirmDialogCallback) {
+                confirmDialogCallback();
+            }
+            hideConfirmDialog();
+        });
+
+        document.getElementById('confirm-dialog-cancel').addEventListener('click', hideConfirmDialog);
+
+        // 点击确认对话框背景关闭
+        confirmDialog.addEventListener('click', function (e) {
+            if (e.target === this) {
+                hideConfirmDialog();
+            }
+        });
+
+        // 日期选择按钮事件处理（添加规则模态框）
+        var addRuleDayButtons = addRuleModal.querySelectorAll('.schedule-day-btn');
+        addRuleDayButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+
+        // 显示添加规则模态框
+        function showAddRuleModal() {
+            if (!currentDevice) return;
+            
+            var addRuleModalEl = document.getElementById('add-rule-modal');
+            var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
+            
+            // 动态填充单位选择器
+            var uploadUnitSelect = document.getElementById('add-rule-upload-limit-unit');
+            var downloadUnitSelect = document.getElementById('add-rule-download-limit-unit');
+            
+            uploadUnitSelect.innerHTML = '';
+            downloadUnitSelect.innerHTML = '';
+            
+            if (speedUnit === 'bits') {
+                uploadUnitSelect.appendChild(E('option', { 'value': '125' }, 'Kbps'));
+                uploadUnitSelect.appendChild(E('option', { 'value': '125000' }, 'Mbps'));
+                uploadUnitSelect.appendChild(E('option', { 'value': '125000000' }, 'Gbps'));
+                
+                downloadUnitSelect.appendChild(E('option', { 'value': '125' }, 'Kbps'));
+                downloadUnitSelect.appendChild(E('option', { 'value': '125000' }, 'Mbps'));
+                downloadUnitSelect.appendChild(E('option', { 'value': '125000000' }, 'Gbps'));
+            } else {
+                uploadUnitSelect.appendChild(E('option', { 'value': '1024' }, 'KB/s'));
+                uploadUnitSelect.appendChild(E('option', { 'value': '1048576' }, 'MB/s'));
+                uploadUnitSelect.appendChild(E('option', { 'value': '1073741824' }, 'GB/s'));
+                
+                downloadUnitSelect.appendChild(E('option', { 'value': '1024' }, 'KB/s'));
+                downloadUnitSelect.appendChild(E('option', { 'value': '1048576' }, 'MB/s'));
+                downloadUnitSelect.appendChild(E('option', { 'value': '1073741824' }, 'GB/s'));
+            }
+            
+            // 重置表单
+            resetAddRuleForm();
+            
+            // 应用主题颜色
+            try {
+                var cbiSection = document.querySelector('.cbi-section');
+                var targetElement = cbiSection || document.querySelector('.main') || document.body;
+                var computedStyle = window.getComputedStyle(targetElement);
+                var bgColor = computedStyle.backgroundColor;
+                var textColor = computedStyle.color;
+                
+                var modalElement = addRuleModalEl.querySelector('.modal');
+                
+                if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                    var rgbaMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                    if (rgbaMatch) {
+                        var r = parseInt(rgbaMatch[1]);
+                        var g = parseInt(rgbaMatch[2]);
+                        var b = parseInt(rgbaMatch[3]);
+                        var alpha = rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1;
+                        
+                        if (alpha < 0.95) {
+                            modalElement.style.backgroundColor = 'rgb(' + r + ', ' + g + ', ' + b + ')';
+                        } else {
+                            modalElement.style.backgroundColor = bgColor;
+                        }
+                    } else {
+                        modalElement.style.backgroundColor = bgColor;
+                    }
+                }
+                
+                if (textColor && textColor !== 'rgba(0, 0, 0, 0)') {
+                    modalElement.style.color = textColor;
+                }
+            } catch(e) {}
+            
+            // 显示模态框
+            addRuleModalEl.classList.add('show');
+        }
+
+        // 隐藏添加规则模态框
+        function hideAddRuleModal() {
+            var addRuleModalEl = document.getElementById('add-rule-modal');
+            addRuleModalEl.classList.remove('show');
+        }
+
+        // 重置添加规则表单
+        function resetAddRuleForm() {
+            document.getElementById('add-rule-start-time').value = '00:00';
+            document.getElementById('add-rule-end-time').value = '23:59';
+            // 默认选中所有7天 - 重新获取按钮引用
+            var dayButtons = addRuleModal.querySelectorAll('.schedule-day-btn');
+            dayButtons.forEach(function(btn) {
+                btn.classList.add('active');
+            });
+            var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
+            document.getElementById('add-rule-upload-limit-value').value = '0';
+            document.getElementById('add-rule-download-limit-value').value = '0';
+            document.getElementById('add-rule-upload-limit-unit').value = speedUnit === 'bits' ? '125' : '1024';
+            document.getElementById('add-rule-download-limit-unit').value = speedUnit === 'bits' ? '125' : '1024';
+        }
+
+        // 添加规则按钮事件处理
+        var scheduleAddRuleBtn = document.getElementById('schedule-add-rule-btn');
+        if (scheduleAddRuleBtn) {
+            scheduleAddRuleBtn.addEventListener('click', function() {
+                showAddRuleModal();
+            });
+        }
+
+        // 添加规则模态框取消按钮
+        document.getElementById('add-rule-cancel').addEventListener('click', hideAddRuleModal);
+
+        // 保存定时限速规则（从添加规则模态框）
+        document.getElementById('add-rule-save').addEventListener('click', function() {
+            if (!currentDevice) {
+                console.error('No current device selected');
+                return;
+            }
+
+            var saveButton = this;
+            var originalText = saveButton.textContent;
+
+            // 显示加载状态
+            saveButton.innerHTML = '<span class="loading-spinner"></span>' + _('Adding...');
+            saveButton.classList.add('btn-loading');
+            saveButton.disabled = true;
+
+            var startTime = document.getElementById('add-rule-start-time').value;
+            var endTime = document.getElementById('add-rule-end-time').value;
+            // HTML5 time 输入不支持 24:00，将 23:59 转换为 24:00 表示全天
+            if (endTime === '23:59') {
+                endTime = '24:00';
+            }
+            
+            // 重新获取日期按钮引用，确保获取最新状态
+            var addRuleModalEl = document.getElementById('add-rule-modal');
+            var dayButtons = addRuleModalEl.querySelectorAll('.schedule-day-btn');
+            var selectedDays = [];
+            dayButtons.forEach(function(btn) {
+                if (btn.classList.contains('active')) {
+                    selectedDays.push(parseInt(btn.getAttribute('data-day')));
+                }
+            });
+
+            if (!startTime || !endTime) {
+                ui.addNotification(null, E('p', {}, _('Please set time slot')), 'error');
+                saveButton.innerHTML = originalText;
+                saveButton.classList.remove('btn-loading');
+                saveButton.disabled = false;
+                return;
+            }
+
+            if (selectedDays.length === 0) {
+                ui.addNotification(null, E('p', {}, _('Please select at least one day')), 'error');
+                saveButton.innerHTML = originalText;
+                saveButton.classList.remove('btn-loading');
+                saveButton.disabled = false;
+                return;
+            }
+
+            var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
+            var scheduleUploadValue = parseInt(document.getElementById('add-rule-upload-limit-value').value) || 0;
+            var scheduleUploadUnit = parseInt(document.getElementById('add-rule-upload-limit-unit').value);
+            var scheduleUploadLimit = scheduleUploadValue > 0 ? scheduleUploadValue * scheduleUploadUnit : 0;
+
+            var scheduleDownloadValue = parseInt(document.getElementById('add-rule-download-limit-value').value) || 0;
+            var scheduleDownloadUnit = parseInt(document.getElementById('add-rule-download-limit-unit').value);
+            var scheduleDownloadLimit = scheduleDownloadValue > 0 ? scheduleDownloadValue * scheduleDownloadUnit : 0;
+
+            console.log('Calling setScheduleLimit:', {
+                mac: currentDevice.mac,
+                startTime: startTime,
+                endTime: endTime,
+                days: selectedDays,
+                uploadLimit: scheduleUploadLimit,
+                downloadLimit: scheduleDownloadLimit
+            });
+
+            callSetScheduleLimit(
+                currentDevice.mac,
+                startTime,
+                endTime,
+                JSON.stringify(selectedDays),
+                scheduleUploadLimit,
+                scheduleDownloadLimit
+            ).then(function(result) {
+                console.log('setScheduleLimit result:', result);
+                // 恢复按钮状态
+                saveButton.innerHTML = originalText;
+                saveButton.classList.remove('btn-loading');
+                saveButton.disabled = false;
+
+                // 隐藏模态框
+                hideAddRuleModal();
+                
+                // 重置表单
+                resetAddRuleForm();
+                
+                // 刷新规则列表
+                loadScheduleRules();
+                updateDeviceData();
+            }).catch(function(error) {
+                console.error('Failed to add schedule rule:', error);
+                // 恢复按钮状态
+                saveButton.innerHTML = originalText;
+                saveButton.classList.remove('btn-loading');
+                saveButton.disabled = false;
+                ui.addNotification(null, E('p', {}, _('Failed to add schedule rule: ') + (error.message || error)), 'error');
+            });
+        });
 
         // 模态框事件处理
         var currentDevice = null;
@@ -972,35 +2211,16 @@ return view.extend({
             currentDevice = device;
             var modal = document.getElementById('rate-limit-modal');
             var deviceSummary = document.getElementById('modal-device-summary');
-            var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
-
-            // 动态填充单位选择器
-            var uploadUnitSelect = document.getElementById('upload-limit-unit');
-            var downloadUnitSelect = document.getElementById('download-limit-unit');
-            
-            // 清空现有选项
-            uploadUnitSelect.innerHTML = '';
-            downloadUnitSelect.innerHTML = '';
-            
-            if (speedUnit === 'bits') {
-                // 比特单位选项 - 直接设置为对应的字节数
-                uploadUnitSelect.appendChild(E('option', { 'value': '125' }, 'Kbps'));       // 1000 bits/s / 8 = 125 bytes/s
-                uploadUnitSelect.appendChild(E('option', { 'value': '125000' }, 'Mbps'));    // 1000000 bits/s / 8 = 125000 bytes/s
-                uploadUnitSelect.appendChild(E('option', { 'value': '125000000' }, 'Gbps')); // 1000000000 bits/s / 8 = 125000000 bytes/s
-                
-                downloadUnitSelect.appendChild(E('option', { 'value': '125' }, 'Kbps'));
-                downloadUnitSelect.appendChild(E('option', { 'value': '125000' }, 'Mbps'));
-                downloadUnitSelect.appendChild(E('option', { 'value': '125000000' }, 'Gbps'));
-            } else {
-                // 字节单位选项
-                uploadUnitSelect.appendChild(E('option', { 'value': '1024' }, 'KB/s'));
-                uploadUnitSelect.appendChild(E('option', { 'value': '1048576' }, 'MB/s'));
-                uploadUnitSelect.appendChild(E('option', { 'value': '1073741824' }, 'GB/s'));
-                
-                downloadUnitSelect.appendChild(E('option', { 'value': '1024' }, 'KB/s'));
-                downloadUnitSelect.appendChild(E('option', { 'value': '1048576' }, 'MB/s'));
-                downloadUnitSelect.appendChild(E('option', { 'value': '1073741824' }, 'GB/s'));
+            // 清空定时限速规则列表并加载
+            var rulesList = document.getElementById('schedule-rules-list');
+            if (rulesList) {
+                rulesList.innerHTML = '<div class="schedule-rules-empty">' + 
+                    _('No scheduled rules yet, click "Add Rule" to start setting') + 
+                    '</div>';
             }
+            
+            // 加载定时限速规则列表
+            loadScheduleRules();
 
             // 更新设备信息
             deviceSummary.innerHTML = E('div', {}, [
@@ -1010,84 +2230,6 @@ return view.extend({
 
             // 设置当前hostname值
             document.getElementById('device-hostname-input').value = device.hostname || '';
-
-            // 设置当前限速值
-            var uploadLimit = device.wide_tx_rate_limit || 0;
-            var downloadLimit = device.wide_rx_rate_limit || 0;
-
-            // 设置上传限速值
-            var uploadValue = uploadLimit;
-            var uploadUnit;
-            if (uploadValue === 0) {
-                document.getElementById('upload-limit-value').value = 0;
-                uploadUnit = speedUnit === 'bits' ? '125' : '1024';
-            } else {
-                if (speedUnit === 'bits') {
-                    // 转换为比特单位显示
-                    var uploadBits = uploadValue * 8;
-                    if (uploadBits >= 1000000000) {
-                        uploadValue = uploadBits / 1000000000;
-                        uploadUnit = '125000000';  // Gbps对应的字节倍数
-                    } else if (uploadBits >= 1000000) {
-                        uploadValue = uploadBits / 1000000;
-                        uploadUnit = '125000';     // Mbps对应的字节倍数
-                    } else {
-                        uploadValue = uploadBits / 1000;
-                        uploadUnit = '125';        // Kbps对应的字节倍数
-                    }
-                } else {
-                    // 字节单位显示
-                    if (uploadValue >= 1073741824) {
-                        uploadValue = uploadValue / 1073741824;
-                        uploadUnit = '1073741824';
-                    } else if (uploadValue >= 1048576) {
-                        uploadValue = uploadValue / 1048576;
-                        uploadUnit = '1048576';
-                    } else {
-                        uploadValue = uploadValue / 1024;
-                        uploadUnit = '1024';
-                    }
-                }
-                document.getElementById('upload-limit-value').value = Math.round(uploadValue);
-            }
-            document.getElementById('upload-limit-unit').value = uploadUnit;
-
-            // 设置下载限速值
-            var downloadValue = downloadLimit;
-            var downloadUnit;
-            if (downloadValue === 0) {
-                document.getElementById('download-limit-value').value = 0;
-                downloadUnit = speedUnit === 'bits' ? '125' : '1024';
-            } else {
-                if (speedUnit === 'bits') {
-                    // 转换为比特单位显示
-                    var downloadBits = downloadValue * 8;
-                    if (downloadBits >= 1000000000) {
-                        downloadValue = downloadBits / 1000000000;
-                        downloadUnit = '125000000';  // Gbps对应的字节倍数
-                    } else if (downloadBits >= 1000000) {
-                        downloadValue = downloadBits / 1000000;
-                        downloadUnit = '125000';     // Mbps对应的字节倍数
-                    } else {
-                        downloadValue = downloadBits / 1000;
-                        downloadUnit = '125';        // Kbps对应的字节倍数
-                    }
-                } else {
-                    // 字节单位显示
-                    if (downloadValue >= 1073741824) {
-                        downloadValue = downloadValue / 1073741824;
-                        downloadUnit = '1073741824';
-                    } else if (downloadValue >= 1048576) {
-                        downloadValue = downloadValue / 1048576;
-                        downloadUnit = '1048576';
-                    } else {
-                        downloadValue = downloadValue / 1024;
-                        downloadUnit = '1024';
-                    }
-                }
-                document.getElementById('download-limit-value').value = Math.round(downloadValue);
-            }
-            document.getElementById('download-limit-unit').value = downloadUnit;
 
             // 应用 cbi-section 的颜色到模态框
             try {
@@ -1181,119 +2323,338 @@ return view.extend({
             }, 300);
         }
 
-        // 保存限速设置
-        function saveRateLimit() {
+        // 加载定时限速规则列表
+        function loadScheduleRules() {
+            if (!currentDevice) return;
+            
+            var rulesList = document.getElementById('schedule-rules-list');
+            if (!rulesList) return;
+            
+            rulesList.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.6; font-size: 0.875rem;">' + _('Loading...') + '</div>';
+            
+            callGetScheduleLimits().then(function(res) {
+                // 检查响应格式
+                if (!res) {
+                    rulesList.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.6; font-size: 0.875rem;">' + _('No schedule rules') + '</div>';
+                    return;
+                }
+                
+                // 检查是否有错误
+                if (res.success === false || res.error) {
+                    var errorMsg = res.error || _('Failed to load schedule rules');
+                    rulesList.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.6; font-size: 0.875rem; color: #ef4444;">' + errorMsg + '</div>';
+                    return;
+                }
+                
+                // 检查数据格式
+                var limits = [];
+                if (res.data && res.data.limits && Array.isArray(res.data.limits)) {
+                    limits = res.data.limits;
+                } else if (Array.isArray(res.limits)) {
+                    // 兼容不同的响应格式
+                    limits = res.limits;
+                } else if (Array.isArray(res)) {
+                    // 如果直接返回数组
+                    limits = res;
+                }
+                
+                var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
+                
+                // 过滤出当前设备的规则
+                var deviceRules = limits.filter(function(rule) {
+                    return rule && rule.mac === currentDevice.mac;
+                });
+                
+                // 清空列表
+                rulesList.innerHTML = '';
+                
+                if (deviceRules.length === 0) {
+                    rulesList.innerHTML = '<div class="schedule-rules-empty">' + 
+                        _('No scheduled rules yet, click "Add Rule" to start setting') + 
+                        '</div>';
+                    return;
+                }
+                
+                // 显示所有规则（支持多个规则）
+                deviceRules.forEach(function(rule) {
+                    var daysText = '';
+                    // days 范围是 1-7 (Monday-Sunday)
+                    var dayNames = {
+                        1: _('Mon'),
+                        2: _('Tue'),
+                        3: _('Wed'),
+                        4: _('Thu'),
+                        5: _('Fri'),
+                        6: _('Sat'),
+                        7: _('Sun')
+                    };
+                    if (rule.time_slot && rule.time_slot.days && Array.isArray(rule.time_slot.days)) {
+                        daysText = rule.time_slot.days.map(function(d) { return dayNames[d] || d; }).join(', ');
+                    }
+                    
+                    var startTime = rule.time_slot && rule.time_slot.start ? rule.time_slot.start : '';
+                    var endTime = rule.time_slot && rule.time_slot.end ? rule.time_slot.end : '';
+                    var uploadLimit = rule.wide_tx_rate_limit || 0;
+                    var downloadLimit = rule.wide_rx_rate_limit || 0;
+                    
+                    var ruleItem = E('div', { 'class': 'schedule-rule-item' }, [
+                        E('div', { 'class': 'schedule-rule-info' }, [
+                            E('div', { 'class': 'schedule-rule-time' }, startTime + ' - ' + endTime),
+                            E('div', { 'class': 'schedule-rule-days' }, daysText),
+                            E('div', { 'class': 'schedule-rule-limits' }, 
+                                '↑ ' + formatByterate(uploadLimit, speedUnit) + 
+                                ' / ↓ ' + formatByterate(downloadLimit, speedUnit)
+                            )
+                        ]),
+                        E('button', { 
+                            'class': 'schedule-rule-delete',
+                            'title': _('Delete')
+                        }, _('Delete'))
+                    ]);
+                    
+                    ruleItem.querySelector('.schedule-rule-delete').addEventListener('click', function() {
+                        showConfirmDialog(
+                            _('Delete Schedule Rule'),
+                            _('Are you sure you want to delete this schedule rule?'),
+                            function() {
+                                var days = rule.time_slot && rule.time_slot.days ? JSON.stringify(rule.time_slot.days) : '[]';
+                                callDeleteScheduleLimit(
+                                    rule.mac,
+                                    startTime,
+                                    endTime,
+                                    days
+                                ).then(function() {
+                                    loadScheduleRules();
+                                    updateDeviceData();
+                                }).catch(function(error) {
+                                    ui.addNotification(null, E('p', {}, _('Failed to delete schedule rule')), 'error');
+                                });
+                            }
+                        );
+                    });
+                    
+                    rulesList.appendChild(ruleItem);
+                });
+            }).catch(function(error) {
+                console.error('Failed to load schedule rules:', error);
+                var errorMsg = _('Failed to load schedule rules');
+                if (error && error.message) {
+                    errorMsg += ': ' + error.message;
+                }
+                rulesList.innerHTML = '<div style="text-align: center; padding: 20px; opacity: 0.6; font-size: 0.875rem; color: #ef4444;">' + errorMsg + '</div>';
+            });
+        }
+
+        // 保存 hostname
+        function saveHostname() {
             if (!currentDevice) return;
 
-            var saveButton = document.getElementById('modal-save');
+            var saveButton = document.getElementById('hostname-save-btn');
             var originalText = saveButton.textContent;
-
-            // 显示加载状态
-            saveButton.innerHTML = '<span class="loading-spinner"></span>' + _('Saving...');
-            saveButton.classList.add('btn-loading');
-
-            var uploadLimit = 0;
-            var downloadLimit = 0;
-            var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
 
             // 获取hostname值
             var newHostname = document.getElementById('device-hostname-input').value.trim();
 
-            // 获取上传限速值
-            var uploadValue = parseInt(document.getElementById('upload-limit-value').value) || 0;
-            var uploadUnit = parseInt(document.getElementById('upload-limit-unit').value);
-            if (uploadValue > 0) {
-                // 选择器的值已经是正确的字节倍数，直接计算即可
-                uploadLimit = uploadValue * uploadUnit;
+            // 如果hostname没有变化，不需要保存
+            if (newHostname === (currentDevice.hostname || '')) {
+                return;
             }
 
-            // 获取下载限速值
-            var downloadValue = parseInt(document.getElementById('download-limit-value').value) || 0;
-            var downloadUnit = parseInt(document.getElementById('download-limit-unit').value);
-            if (downloadValue > 0) {
-                // 选择器的值已经是正确的字节倍数，直接计算即可
-                downloadLimit = downloadValue * downloadUnit;
-            }
+            // 显示加载状态
+            saveButton.innerHTML = '<span class="loading-spinner"></span>' + _('Saving...');
+            saveButton.classList.add('btn-loading');
+            saveButton.disabled = true;
 
-            // console.log("mac", currentDevice.mac)
-            // console.log("uploadLimit", uploadLimit)
-            // console.log("downloadLimit", downloadLimit)
-            // console.log("newHostname", newHostname)
-
-            // 创建Promise数组来并行处理hostname和限速设置
-            var promises = [];
-
-            // 如果hostname有变化，添加hostname设置Promise
-            if (newHostname !== (currentDevice.hostname || '')) {
-                promises.push(
-                    callSetHostname(currentDevice.mac, newHostname).catch(function(error) {
-                        return { hostnameError: error };
-                    })
-                );
-            }
-
-            // 添加限速设置Promise
-            promises.push(
-                callSetRateLimit(currentDevice.mac, uploadLimit, downloadLimit).catch(function(error) {
-                    return { rateLimitError: error };
-                })
-            );
-
-            // 并行执行所有设置
-            Promise.all(promises).then(function (results) {
+            callSetHostname(currentDevice.mac, newHostname).then(function(result) {
                 // 恢复按钮状态
                 saveButton.innerHTML = originalText;
                 saveButton.classList.remove('btn-loading');
+                saveButton.disabled = false;
 
-                var hasError = false;
-                var errorMessages = [];
-
-                // 检查结果
-                results.forEach(function(result, index) {
-                    if (result && result.hostnameError) {
-                        hasError = true;
-                        errorMessages.push(_('Failed to set hostname'));
-                    } else if (result && result.rateLimitError) {
-                        hasError = true;
-                        errorMessages.push(_('Failed to save settings'));
-                    } else if (result !== true && result !== undefined) {
-                        // 检查是否有其他错误
-                        if (result && result.error) {
-                            hasError = true;
-                            errorMessages.push(result.error);
-                        }
-                    }
-                });
-
-                if (hasError) {
-                    ui.addNotification(null, E('p', {}, errorMessages.join(', ')), 'error');
-                } else {
-                    // 所有设置都成功
-                    hideRateLimitModal();
-                }
-            }).catch(function (error) {
+                // 更新当前设备信息
+                currentDevice.hostname = newHostname;
+                
+                // 刷新设备数据
+                updateDeviceData();
+            }).catch(function(error) {
                 // 恢复按钮状态
                 saveButton.innerHTML = originalText;
                 saveButton.classList.remove('btn-loading');
-                ui.addNotification(null, E('p', {}, _('Failed to save settings')), 'error');
+                saveButton.disabled = false;
+                ui.addNotification(null, E('p', {}, _('Failed to set hostname')), 'error');
             });
         }
 
-        // 绑定模态框事件
-        document.getElementById('modal-cancel').addEventListener('click', hideRateLimitModal);
-        document.getElementById('modal-save').addEventListener('click', saveRateLimit);
+        // 绑定 hostname 保存按钮事件
+        document.getElementById('hostname-save-btn').addEventListener('click', saveHostname);
 
-        // 点击模态框背景关闭
-        document.getElementById('rate-limit-modal').addEventListener('click', function (e) {
-            if (e.target === this) {
-                hideRateLimitModal();
-            }
-        });
+        // 绑定关闭按钮事件
+        document.getElementById('modal-close').addEventListener('click', hideRateLimitModal);
 
         // 历史趋势：状态与工具
         var latestDevices = [];
         var lastHistoryData = null; // 最近一次拉取的原始 metrics 数据
         var isHistoryLoading = false; // 防止轮询重入
+        
+        // 定时限速规则：全局存储
+        var allScheduleRules = []; // 存储所有设备的定时限速规则
+        var isScheduleRulesLoading = false; // 防止轮询重入
+        
+        // 获取所有定时限速规则
+        function fetchAllScheduleRules() {
+            if (isScheduleRulesLoading) return Promise.resolve();
+            isScheduleRulesLoading = true;
+            
+            return callGetScheduleLimits().then(function(res) {
+                isScheduleRulesLoading = false;
+                
+                if (!res) {
+                    allScheduleRules = [];
+                    return;
+                }
+                
+                // 检查是否有错误
+                if (res.success === false || res.error) {
+                    allScheduleRules = [];
+                    return;
+                }
+                
+                // 检查数据格式
+                var limits = [];
+                if (res.data && res.data.limits && Array.isArray(res.data.limits)) {
+                    limits = res.data.limits;
+                } else if (Array.isArray(res.limits)) {
+                    limits = res.limits;
+                } else if (Array.isArray(res)) {
+                    limits = res;
+                }
+                
+                allScheduleRules = limits || [];
+            }).catch(function(error) {
+                isScheduleRulesLoading = false;
+                console.error('Failed to fetch schedule rules:', error);
+                allScheduleRules = [];
+            });
+        }
+        
+        // 判断规则是否在当前时间生效
+        function isRuleActive(rule) {
+            if (!rule || !rule.time_slot) return false;
+            
+            var now = new Date();
+            var currentDay = now.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+            // 转换为 1-7 (Monday-Sunday)
+            var dayOfWeek = currentDay === 0 ? 7 : currentDay;
+            
+            // 检查是否在规则指定的日期中
+            var days = rule.time_slot.days || [];
+            if (!Array.isArray(days) || days.length === 0) return false;
+            if (days.indexOf(dayOfWeek) === -1) return false;
+            
+            // 获取当前时间（HH:MM格式）
+            var currentTime = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+            var startTime = rule.time_slot.start || '';
+            var endTime = rule.time_slot.end || '';
+            
+            if (!startTime || !endTime) return false;
+            
+            // 处理 24:00 的情况
+            if (endTime === '24:00') {
+                endTime = '23:59';
+            }
+            
+            // 比较时间
+            if (startTime <= endTime) {
+                // 正常情况：开始时间 <= 结束时间
+                return currentTime >= startTime && currentTime <= endTime;
+            } else {
+                // 跨天情况：开始时间 > 结束时间（例如 22:00 - 06:00）
+                return currentTime >= startTime || currentTime <= endTime;
+            }
+        }
+        
+        // 获取设备当前生效的规则
+        function getActiveRulesForDevice(mac) {
+            if (!allScheduleRules || allScheduleRules.length === 0) return [];
+            
+            return allScheduleRules.filter(function(rule) {
+                return rule && rule.mac === mac && isRuleActive(rule);
+            });
+        }
+        
+        // 合并多个生效规则的限制值
+        // 返回合并后的上传和下载限制（取所有规则中非零的最小值）
+        function mergeActiveRulesLimits(activeRules) {
+            if (!activeRules || activeRules.length === 0) {
+                return { uploadLimit: 0, downloadLimit: 0 };
+            }
+            
+            var uploadLimits = [];
+            var downloadLimits = [];
+            
+            activeRules.forEach(function(rule) {
+                var uploadLimit = rule.wide_tx_rate_limit || 0;
+                var downloadLimit = rule.wide_rx_rate_limit || 0;
+                
+                // 只收集非零的限制值
+                if (uploadLimit > 0) {
+                    uploadLimits.push(uploadLimit);
+                }
+                if (downloadLimit > 0) {
+                    downloadLimits.push(downloadLimit);
+                }
+            });
+            
+            // 取最小值（如果有多个规则都有限制，取最严格的限制）
+            var mergedUploadLimit = uploadLimits.length > 0 ? Math.min.apply(Math, uploadLimits) : 0;
+            var mergedDownloadLimit = downloadLimits.length > 0 ? Math.min.apply(Math, downloadLimits) : 0;
+            
+            return {
+                uploadLimit: mergedUploadLimit,
+                downloadLimit: mergedDownloadLimit
+            };
+        }
+        
+        // 获取多个规则的时间段显示文本
+        // 如果所有规则的时间段相同，显示时间段；如果不同，显示"多个时间段"
+        function getTimeSlotDisplayText(activeRules) {
+            if (!activeRules || activeRules.length === 0) {
+                return '';
+            }
+            
+            if (activeRules.length === 1) {
+                // 单个规则，直接显示时间段
+                var rule = activeRules[0];
+                var startTime = rule.time_slot && rule.time_slot.start ? rule.time_slot.start : '';
+                var endTime = rule.time_slot && rule.time_slot.end ? rule.time_slot.end : '';
+                return startTime + '-' + endTime;
+            }
+            
+            // 多个规则，检查时间段是否相同
+            var firstRule = activeRules[0];
+            var firstStartTime = firstRule.time_slot && firstRule.time_slot.start ? firstRule.time_slot.start : '';
+            var firstEndTime = firstRule.time_slot && firstRule.time_slot.end ? firstRule.time_slot.end : '';
+            
+            var allSame = true;
+            for (var i = 1; i < activeRules.length; i++) {
+                var rule = activeRules[i];
+                var startTime = rule.time_slot && rule.time_slot.start ? rule.time_slot.start : '';
+                var endTime = rule.time_slot && rule.time_slot.end ? rule.time_slot.end : '';
+                
+                if (startTime !== firstStartTime || endTime !== firstEndTime) {
+                    allSame = false;
+                    break;
+                }
+            }
+            
+            if (allSame) {
+                // 所有规则时间段相同，显示时间段和规则数量
+                return firstStartTime + '-' + firstEndTime + ' (' + activeRules.length + ' ' + _('rules') + ')';
+            } else {
+                // 时间段不同，显示"多个时间段"
+                return _('Multiple time slots') + ' (' + activeRules.length + ' ' + _('rules') + ')';
+            }
+        }
         
         // 排序状态管理
         var currentSortBy = localStorage.getItem('bandix_sort_by') || 'online'; // 默认按在线状态排序
@@ -1361,14 +2722,109 @@ return view.extend({
         }
 
         function getTypeKeys(type) {
+            // 对于非实时时间范围（day/week/month），只有 WAN 数据
+            if (currentTimeRange !== 'realtime') {
+                // 所有类型都使用 WAN 数据
+                return { up: 'wide_tx_rate', down: 'wide_rx_rate' };
+            }
+            
             if (type === 'lan') return { up: 'local_tx_rate', down: 'local_rx_rate' };
             if (type === 'wan') return { up: 'wide_tx_rate', down: 'wide_rx_rate' };
             return { up: 'total_tx_rate', down: 'total_rx_rate' };
         }
 
+        // 当前选择的时间范围
+        var currentTimeRange = localStorage.getItem('bandix_time_range') || 'realtime';
+        
         function fetchMetricsData(mac) {
+            // 根据选择的时间范围调用不同的接口
+            var range = currentTimeRange;
+            var callFunction;
+            
+            switch (range) {
+                case 'day':
+                    callFunction = callGetMetricsDay;
+                    break;
+                case 'week':
+                    callFunction = callGetMetricsWeek;
+                    break;
+                case 'month':
+                    callFunction = callGetMetricsMonth;
+                    break;
+                case 'realtime':
+                default:
+                    callFunction = callGetMetrics;
+                    break;
+            }
+            
             // 通过 ubus RPC 获取，避免跨域与鉴权问题
-            return callGetMetrics(mac || '').then(function (res) { return res || { metrics: [] }; });
+            return callFunction(mac || '').then(function (res) { return res || { metrics: [] }; });
+        }
+
+        // 将数组数组格式转换为对象数组格式（实时数据格式：13个字段）
+        // 输入格式: [[ts_ms, total_rx_rate, total_tx_rate, local_rx_rate, local_tx_rate, wide_rx_rate, wide_tx_rate, total_rx_bytes, total_tx_bytes, local_rx_bytes, local_tx_bytes, wide_rx_bytes, wide_tx_bytes], ...]
+        // 输出格式: [{ts_ms, total_rx_rate, total_tx_rate, ...}, ...]
+        function convertMetricsArrayToObjects(metricsArray) {
+            if (!Array.isArray(metricsArray)) {
+                return [];
+            }
+            
+            return metricsArray.map(function(arr) {
+                // 检查数据格式：如果是15个字段，说明是 day/week/month 格式
+                if (arr.length >= 15) {
+                    // day/week/month 格式：使用 P95 作为主要显示值
+                    return {
+                        ts_ms: arr[0] || 0,
+                        // 使用 P95 作为主要速率显示（最有价值的指标）
+                        wide_rx_rate: arr[5] || 0, // wide_rx_rate_p95
+                        wide_tx_rate: arr[11] || 0, // wide_tx_rate_p95
+                        // 保存所有统计信息供 tooltip 使用
+                        wide_rx_rate_avg: arr[1] || 0,
+                        wide_rx_rate_max: arr[2] || 0,
+                        wide_rx_rate_min: arr[3] || 0,
+                        wide_rx_rate_p90: arr[4] || 0,
+                        wide_rx_rate_p95: arr[5] || 0,
+                        wide_rx_rate_p99: arr[6] || 0,
+                        wide_tx_rate_avg: arr[7] || 0,
+                        wide_tx_rate_max: arr[8] || 0,
+                        wide_tx_rate_min: arr[9] || 0,
+                        wide_tx_rate_p90: arr[10] || 0,
+                        wide_tx_rate_p95: arr[11] || 0,
+                        wide_tx_rate_p99: arr[12] || 0,
+                        wide_rx_bytes: arr[13] || 0,
+                        wide_tx_bytes: arr[14] || 0,
+                        // 标记这是聚合数据
+                        is_aggregated: true,
+                        // 为了兼容性，设置其他字段（day/week/month 只有 WAN 数据）
+                        total_rx_rate: arr[5] || 0, // 使用 P95
+                        total_tx_rate: arr[11] || 0, // 使用 P95
+                        local_rx_rate: 0,
+                        local_tx_rate: 0,
+                        total_rx_bytes: arr[13] || 0,
+                        total_tx_bytes: arr[14] || 0,
+                        local_rx_bytes: 0,
+                        local_tx_bytes: 0
+                    };
+                } else {
+                    // 实时数据格式（13个字段）
+                    return {
+                        ts_ms: arr[0] || 0,
+                        total_rx_rate: arr[1] || 0,
+                        total_tx_rate: arr[2] || 0,
+                        local_rx_rate: arr[3] || 0,
+                        local_tx_rate: arr[4] || 0,
+                        wide_rx_rate: arr[5] || 0,
+                        wide_tx_rate: arr[6] || 0,
+                        total_rx_bytes: arr[7] || 0,
+                        total_tx_bytes: arr[8] || 0,
+                        local_rx_bytes: arr[9] || 0,
+                        local_tx_bytes: arr[10] || 0,
+                        wide_rx_bytes: arr[11] || 0,
+                        wide_tx_bytes: arr[12] || 0,
+                        is_aggregated: false
+                    };
+                }
+            }).filter(function(item) { return item !== null; });
         }
 
         // 辅助函数：使用当前缩放设置绘制图表
@@ -1414,8 +2870,14 @@ return view.extend({
 
             var width = cssWidth;
             var height = cssHeight;
-            // 预留更大边距，避免标签被裁剪
-            var padding = { left: 90, right: 50, top: 16, bottom: 36 };
+            
+            // 检测是否为移动端
+            var isMobile = width <= 768;
+            
+            // 预留更大边距，避免标签被裁剪（移动端使用更小的边距）
+            var padding = isMobile 
+                ? { left: 50, right: 20, top: 12, bottom: 28 }
+                : { left: 90, right: 50, top: 16, bottom: 36 };
 
             // 背景
             ctx.clearRect(0, 0, width, height);
@@ -1443,13 +2905,14 @@ return view.extend({
             if (!isFinite(maxVal) || maxVal <= 0) maxVal = 1;
 
             // 动态测量Y轴最大标签宽度，增大左边距
-            ctx.font = '12px sans-serif';
+            var fontSize = isMobile ? 10 : 12;
+            ctx.font = fontSize + 'px sans-serif';
             var maxLabelText = formatByterate(maxVal, speedUnit);
             var zeroLabelText = formatByterate(0, speedUnit);
             var maxLabelWidth = Math.max(ctx.measureText(maxLabelText).width, ctx.measureText(zeroLabelText).width);
-            padding.left = Math.max(padding.left, Math.ceil(maxLabelWidth) + 30);
+            padding.left = Math.max(padding.left, Math.ceil(maxLabelWidth) + (isMobile ? 20 : 30));
             // 保证右侧时间不被裁剪
-            var rightMin = 50; // 最小右边距
+            var rightMin = isMobile ? 20 : 50; // 最小右边距
             padding.right = Math.max(padding.right, rightMin);
 
             var innerW = Math.max(1, width - padding.left - padding.right);
@@ -1487,11 +2950,11 @@ return view.extend({
                 ctx.stroke();
                 var val = Math.round(maxVal * (gridLines - g) / gridLines);
                 ctx.fillStyle = '#9ca3af';
-                ctx.font = '12px sans-serif';
+                ctx.font = fontSize + 'px sans-serif';
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
                 var yLabelY = (g === gridLines) ? y - 4 : y; // 底部刻度上移，避免贴近X轴
-                ctx.fillText(formatByterate(val, speedUnit), padding.left - 8, yLabelY);
+                ctx.fillText(formatByterate(val, speedUnit), padding.left - (isMobile ? 6 : 8), yLabelY);
             }
 
             function drawAreaSeries(series, color, gradientFrom, gradientTo) {
@@ -1528,7 +2991,8 @@ return view.extend({
                     if (k2 === 0) ctx.moveTo(x2, y2); else ctx.lineTo(x2, y2);
                 }
                 ctx.strokeStyle = color;
-                ctx.lineWidth = 1.2; // 更细的线
+                // 移动端使用稍粗的线条以便更好地显示
+                ctx.lineWidth = isMobile ? 1.5 : 1.2;
                 ctx.stroke();
 
                 // 圆点已移除，只保留线条
@@ -1541,11 +3005,11 @@ return view.extend({
             // X 轴时间标签（首尾）
             if (labels && labels.length > 0) {
                 ctx.fillStyle = '#9ca3af';
-                ctx.font = '12px sans-serif';
+                ctx.font = fontSize + 'px sans-serif';
                 ctx.textBaseline = 'top';
                 var firstX = padding.left;
                 var lastX = width - padding.right;
-                var yBase = height - padding.bottom + 4;
+                var yBase = height - padding.bottom + (isMobile ? 2 : 4);
                 // 左侧时间靠左对齐
                 ctx.textAlign = 'left';
                 ctx.fillText(labels[0], firstX, yBase);
@@ -1557,7 +3021,10 @@ return view.extend({
             }
 
             // 如果存在 hoverIndex，则绘制垂直虚线（鼠标对着的 x 轴）
+            // 移动端不绘制虚线
             try {
+                if (isMobile) return; // 移动端不绘制悬浮虚线
+                
                 var info = canvas.__bandixChart || {};
                 var useIdx = null;
                 if (typeof historyHoverIndex === 'number') useIdx = historyHoverIndex;
@@ -1602,6 +3069,18 @@ return view.extend({
             var ss = ('' + d.getSeconds()).padStart(2, '0');
             return hh + ':' + mm + ':' + ss;
         }
+        
+        // 完整日期时间格式（用于聚合数据）
+        function msToFullDateTimeLabel(ts) {
+            var d = new Date(ts);
+            var year = d.getFullYear();
+            var month = ('' + (d.getMonth() + 1)).padStart(2, '0');
+            var day = ('' + d.getDate()).padStart(2, '0');
+            var hh = ('' + d.getHours()).padStart(2, '0');
+            var mm = ('' + d.getMinutes()).padStart(2, '0');
+            var ss = ('' + d.getSeconds()).padStart(2, '0');
+            return year + '-' + month + '-' + day + ' ' + hh + ':' + mm + ':' + ss;
+        }
 
 		function buildTooltipHtml(point) {
 			if (!point) return '';
@@ -1609,6 +3088,7 @@ return view.extend({
 			var typeSel = (typeof document !== 'undefined' ? document.getElementById('history-type-select') : null);
 			var selType = (typeSel && typeSel.value) ? typeSel.value : 'total';
 			var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
+			var isAggregated = point.is_aggregated || false;
 
 			function row(label, val) {
 				lines.push('<div class="ht-row"><span class="ht-key">' + label + '</span><span class="ht-val">' + val + '</span></div>');
@@ -1640,65 +3120,115 @@ return view.extend({
 				return { up: 'total_tx_bytes', down: 'total_rx_bytes' };
 			}
 
-			lines.push('<div class="ht-title">' + msToTimeLabel(point.ts_ms) + '</div>');
-
-			// 若选择了设备，显示设备信息
-			try {
-				var macSel = (typeof document !== 'undefined' ? document.getElementById('history-device-select') : null);
-				var macVal = (macSel && macSel.value) ? macSel.value : '';
-				if (macVal && Array.isArray(latestDevices)) {
-					var dev = latestDevices.find(function(d){ return d.mac === macVal; });
-					if (dev) {
-						var ipv6Info = '';
-						var lanIPv6 = filterLanIPv6(dev.ipv6_addresses);
-						if (lanIPv6.length > 0) {
-							ipv6Info = ' | IPv6: ' + lanIPv6.join(', ');
-						}
-						var devLabel = (dev.hostname || '-') + (dev.ip ? ' (' + dev.ip + ')' : '') + (dev.mac ? ' [' + dev.mac + ']' : '') + ipv6Info;
-						lines.push('<div class="ht-device">' + _('Device') + ': ' + devLabel + '</div>');
-					}
+			// 标题：聚合数据显示完整日期时间，实时数据只显示时间
+			if (isAggregated) {
+				lines.push('<div class="ht-title">' + msToFullDateTimeLabel(point.ts_ms) + '</div>');
+				var rangeLabel = currentTimeRange === 'day' ? _('Daily') : 
+				                 currentTimeRange === 'week' ? _('Weekly') : 
+				                 currentTimeRange === 'month' ? _('Monthly') : '';
+				if (rangeLabel) {
+					lines.push('<div style="font-size: 0.75rem; opacity: 0.6; margin-bottom: 4px;">' + rangeLabel + ' ' + _('Statistics') + '</div>');
 				}
-			} catch (e) {}
+			} else {
+				lines.push('<div class="ht-title">' + msToTimeLabel(point.ts_ms) + '</div>');
+			}
 
 			// 关键信息：选中类型的上下行速率（大号显示）
 			var kpiLabels = labelsFor(selType);
 			var kpiRateKeys = rateKeysFor(selType);
-			lines.push(
-				'<div class="ht-kpis">' +
-					'<div class="ht-kpi up">' +
-						'<div class="ht-k-label">' + kpiLabels.up + '</div>' +
-						'<div class="ht-k-value">' + rateValue(kpiRateKeys.up) + '</div>' +
-					'</div>' +
-					'<div class="ht-kpi down">' +
-						'<div class="ht-k-label">' + kpiLabels.down + '</div>' +
-						'<div class="ht-k-value">' + rateValue(kpiRateKeys.down) + '</div>' +
-					'</div>' +
-				'</div>'
-			);
+			
+			if (isAggregated) {
+				// 聚合数据：显示 P95 值（主要指标）
+				lines.push(
+					'<div class="ht-kpis">' +
+						'<div class="ht-kpi up">' +
+							'<div class="ht-k-label">' + _('WAN Upload') + ' (P95)</div>' +
+							'<div class="ht-k-value">' + formatByterate(point.wide_tx_rate_p95 || 0, speedUnit) + '</div>' +
+						'</div>' +
+						'<div class="ht-kpi down">' +
+							'<div class="ht-k-label">' + _('WAN Download') + ' (P95)</div>' +
+							'<div class="ht-k-value">' + formatByterate(point.wide_rx_rate_p95 || 0, speedUnit) + '</div>' +
+						'</div>' +
+					'</div>'
+				);
+				
+				// 详细统计信息
+				lines.push('<div class="ht-divider"></div>');
+				lines.push('<div class="ht-section-title">' + _('Upload Statistics') + '</div>');
+				row(_('Average'), formatByterate(point.wide_tx_rate_avg || 0, speedUnit));
+				row(_('Maximum'), formatByterate(point.wide_tx_rate_max || 0, speedUnit));
+				row(_('Minimum'), formatByterate(point.wide_tx_rate_min || 0, speedUnit));
+				row('P90', formatByterate(point.wide_tx_rate_p90 || 0, speedUnit));
+				row('P95', formatByterate(point.wide_tx_rate_p95 || 0, speedUnit));
+				row('P99', formatByterate(point.wide_tx_rate_p99 || 0, speedUnit));
+				
+				lines.push('<div class="ht-section-title" style="margin-top: 8px;">' + _('Download Statistics') + '</div>');
+				row(_('Average'), formatByterate(point.wide_rx_rate_avg || 0, speedUnit));
+				row(_('Maximum'), formatByterate(point.wide_rx_rate_max || 0, speedUnit));
+				row(_('Minimum'), formatByterate(point.wide_rx_rate_min || 0, speedUnit));
+				row('P90', formatByterate(point.wide_rx_rate_p90 || 0, speedUnit));
+				row('P95', formatByterate(point.wide_rx_rate_p95 || 0, speedUnit));
+				row('P99', formatByterate(point.wide_rx_rate_p99 || 0, speedUnit));
+				
+				// 累计流量（只显示 WAN）
+				lines.push('<div class="ht-divider"></div>');
+				lines.push('<div class="ht-section-title">' + _('Cumulative Traffic') + '</div>');
+				row(_('WAN Uploaded'), bytesValue('wide_tx_bytes'));
+				row(_('WAN Downloaded'), bytesValue('wide_rx_bytes'));
+			} else {
+				// 实时数据：显示实时速率
+				lines.push(
+					'<div class="ht-kpis">' +
+						'<div class="ht-kpi up">' +
+							'<div class="ht-k-label">' + kpiLabels.up + '</div>' +
+							'<div class="ht-k-value">' + rateValue(kpiRateKeys.up) + '</div>' +
+						'</div>' +
+						'<div class="ht-kpi down">' +
+							'<div class="ht-k-label">' + kpiLabels.down + '</div>' +
+							'<div class="ht-k-value">' + rateValue(kpiRateKeys.down) + '</div>' +
+						'</div>' +
+					'</div>'
+				);
 
-			// 次要信息：其余类型的速率（精简展示）
-			var otherTypes = ['total', 'lan', 'wan'].filter(function (t) { return t !== selType; });
-			if (otherTypes.length) {
-				lines.push('<div class="ht-section-title">' + _('Other Rates') + '</div>');
-				otherTypes.forEach(function (t) {
-					var lbs = labelsFor(t);
-					var ks = rateKeysFor(t);
-					row(lbs.up, rateValue(ks.up));
-					row(lbs.down, rateValue(ks.down));
-				});
+				// 次要信息：其余类型的速率（精简展示）
+				var otherTypes = ['total', 'lan', 'wan'].filter(function (t) { return t !== selType; });
+				if (otherTypes.length) {
+					lines.push('<div class="ht-section-title">' + _('Other Rates') + '</div>');
+					otherTypes.forEach(function (t) {
+						var lbs = labelsFor(t);
+						var ks = rateKeysFor(t);
+						row(lbs.up, rateValue(ks.up));
+						row(lbs.down, rateValue(ks.down));
+					});
+				}
+
+				// 累计：区分LAN 流量与公网
+				lines.push('<div class="ht-divider"></div>');
+				lines.push('<div class="ht-section-title">' + _('Cumulative') + '</div>');
+				row(_('Total Uploaded'), bytesValue('total_tx_bytes'));
+				row(_('Total Downloaded'), bytesValue('total_rx_bytes'));
+				row(_('LAN Uploaded'), bytesValue('local_tx_bytes'));
+				row(_('LAN Downloaded'), bytesValue('local_rx_bytes'));
+				row(_('WAN Uploaded'), bytesValue('wide_tx_bytes'));
+				row(_('WAN Downloaded'), bytesValue('wide_rx_bytes'));
 			}
 
-			// 累计：区分LAN 流量与公网
-			lines.push('<div class="ht-divider"></div>');
-			lines.push('<div class="ht-section-title">' + _('Cumulative') + '</div>');
-			row(_('Total Uploaded'), bytesValue('total_tx_bytes'));
-			row(_('Total Downloaded'), bytesValue('total_rx_bytes'));
-			row(_('LAN Uploaded'), bytesValue('local_tx_bytes'));
-			row(_('LAN Downloaded'), bytesValue('local_rx_bytes'));
-			row(_('WAN Uploaded'), bytesValue('wide_tx_bytes'));
-			row(_('WAN Downloaded'), bytesValue('wide_rx_bytes'));
-
 			return lines.join('');
+        }
+
+        // 辅助函数：比较IP地址（小的在前）
+        function compareIP(aIp, bIp) {
+            var aIpParts = (aIp || '').split('.').map(function(part) { return parseInt(part) || 0; });
+            var bIpParts = (bIp || '').split('.').map(function(part) { return parseInt(part) || 0; });
+            
+            for (var i = 0; i < 4; i++) {
+                var aPart = aIpParts[i] || 0;
+                var bPart = bIpParts[i] || 0;
+                if (aPart !== bPart) {
+                    return aPart - bPart; // 小的IP在前
+                }
+            }
+            return 0;
         }
 
         // 排序逻辑函数
@@ -1712,131 +3242,102 @@ function sortDevices(devices, sortBy, ascending) {
             sortedDevices.sort(function(a, b) {
                 var aOnline = isDeviceOnline(a);
                 var bOnline = isDeviceOnline(b);
-                if (aOnline === bOnline) return 0;
-                return ascending ? (aOnline ? -1 : 1) : (aOnline ? 1 : -1);
-            });
-            break;
-            
-        case 'ip':
-            sortedDevices.sort(function(a, b) {
-                var aIp = a.ip || '';
-                var bIp = b.ip || '';
                 
-                // 将IP地址转换为数字进行比较
-                var aIpParts = aIp.split('.').map(function(part) { return parseInt(part) || 0; });
-                var bIpParts = bIp.split('.').map(function(part) { return parseInt(part) || 0; });
-                
-                // 逐段比较IP地址
-                for (var i = 0; i < 4; i++) {
-                    var aPart = aIpParts[i] || 0;
-                    var bPart = bIpParts[i] || 0;
-                    if (aPart !== bPart) {
-                        return ascending ? (aPart - bPart) : (bPart - aPart);
-                    }
-                }
-                return 0;
-            });
-            break;
-            
-        case 'hostname':
-            sortedDevices.sort(function(a, b) {
-                // 先按在线状态排序
-                var aOnline = isDeviceOnline(a);
-                var bOnline = isDeviceOnline(b);
-                
+                // 如果在线状态不同，在线设备优先
                 if (aOnline !== bOnline) {
-                    return aOnline ? -1 : 1; // 在线设备始终在前
+                    return ascending ? (aOnline ? 1 : -1) : (aOnline ? -1 : 1);
                 }
                 
-                // 在线状态相同时，按IP地址排序
-                var aIp = a.ip || '';
-                var bIp = b.ip || '';
-                var aIpParts = aIp.split('.').map(function(part) { return parseInt(part) || 0; });
-                var bIpParts = bIp.split('.').map(function(part) { return parseInt(part) || 0; });
+                // 在线状态相同时，按IP地址排序（小的在前）
+                var ipCompare = compareIP(a.ip, b.ip);
+                if (ipCompare !== 0) return ipCompare;
                 
-                for (var i = 0; i < 4; i++) {
-                    var aPart = aIpParts[i] || 0;
-                    var bPart = bIpParts[i] || 0;
-                    if (aPart !== bPart) {
-                        return ascending ? (aPart - bPart) : (bPart - aPart);
-                    }
-                }
-                
-                // IP相同时，按MAC地址排序
+                // IP地址也相同时，按MAC地址排序
                 return (a.mac || '').localeCompare(b.mac || '');
-            });
-            break;
-            
-        case 'mac':
-            sortedDevices.sort(function(a, b) {
-                var aMac = (a.mac || '').toLowerCase();
-                var bMac = (b.mac || '').toLowerCase();
-                if (aMac === bMac) return 0;
-                return ascending ? aMac.localeCompare(bMac) : bMac.localeCompare(aMac);
-            });
-            break;
-            
-        case 'upload_speed':
-            sortedDevices.sort(function(a, b) {
-                var aSpeed = (a.wide_tx_rate || 0) + (a.local_tx_rate || 0);
-                var bSpeed = (b.wide_tx_rate || 0) + (b.local_tx_rate || 0);
-                return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
-            });
-            break;
-            
-        case 'download_speed':
-            sortedDevices.sort(function(a, b) {
-                var aSpeed = (a.wide_rx_rate || 0) + (a.local_rx_rate || 0);
-                var bSpeed = (b.wide_rx_rate || 0) + (b.local_rx_rate || 0);
-                return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
             });
             break;
             
         case 'lan_speed':
             sortedDevices.sort(function(a, b) {
+                // 先按在线状态排序（在线在前）
+                var aOnline = isDeviceOnline(a);
+                var bOnline = isDeviceOnline(b);
+                if (aOnline !== bOnline) {
+                    return aOnline ? -1 : 1;
+                }
+                
+                // 在线状态相同时，按LAN速度排序
                 var aSpeed = (a.local_tx_rate || 0) + (a.local_rx_rate || 0);
                 var bSpeed = (b.local_tx_rate || 0) + (b.local_rx_rate || 0);
-                return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
+                if (aSpeed !== bSpeed) {
+                    return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
+                }
+                
+                // 速度相同时，按IP地址排序
+                return compareIP(a.ip, b.ip);
             });
             break;
             
         case 'wan_speed':
             sortedDevices.sort(function(a, b) {
+                // 先按在线状态排序（在线在前）
+                var aOnline = isDeviceOnline(a);
+                var bOnline = isDeviceOnline(b);
+                if (aOnline !== bOnline) {
+                    return aOnline ? -1 : 1;
+                }
+                
+                // 在线状态相同时，按WAN速度排序
                 var aSpeed = (a.wide_tx_rate || 0) + (a.wide_rx_rate || 0);
                 var bSpeed = (b.wide_tx_rate || 0) + (b.wide_rx_rate || 0);
-                return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
-            });
-            break;
-            
-        case 'total_traffic':
-            sortedDevices.sort(function(a, b) {
-                var aTotal = (a.wide_tx_bytes || 0) + (a.wide_rx_bytes || 0) + (a.local_tx_bytes || 0) + (a.local_rx_bytes || 0);
-                var bTotal = (b.wide_tx_bytes || 0) + (b.wide_rx_bytes || 0) + (b.local_tx_bytes || 0) + (b.local_rx_bytes || 0);
-                return ascending ? (aTotal - bTotal) : (bTotal - aTotal);
-            });
-            break;
-            
-        case 'last_online':
-            sortedDevices.sort(function(a, b) {
-                var aTime = a.last_online_ts || 0;
-                var bTime = b.last_online_ts || 0;
-                return ascending ? (aTime - bTime) : (bTime - aTime);
+                if (aSpeed !== bSpeed) {
+                    return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
+                }
+                
+                // 速度相同时，按IP地址排序
+                return compareIP(a.ip, b.ip);
             });
             break;
             
         case 'lan_traffic':
             sortedDevices.sort(function(a, b) {
+                // 先按在线状态排序（在线在前）
+                var aOnline = isDeviceOnline(a);
+                var bOnline = isDeviceOnline(b);
+                if (aOnline !== bOnline) {
+                    return aOnline ? -1 : 1;
+                }
+                
+                // 在线状态相同时，按LAN流量排序
                 var aTraffic = (a.local_tx_bytes || 0) + (a.local_rx_bytes || 0);
                 var bTraffic = (b.local_tx_bytes || 0) + (b.local_rx_bytes || 0);
-                return ascending ? (aTraffic - bTraffic) : (bTraffic - aTraffic);
+                if (aTraffic !== bTraffic) {
+                    return ascending ? (aTraffic - bTraffic) : (bTraffic - aTraffic);
+                }
+                
+                // 流量相同时，按IP地址排序
+                return compareIP(a.ip, b.ip);
             });
             break;
             
         case 'wan_traffic':
             sortedDevices.sort(function(a, b) {
+                // 先按在线状态排序（在线在前）
+                var aOnline = isDeviceOnline(a);
+                var bOnline = isDeviceOnline(b);
+                if (aOnline !== bOnline) {
+                    return aOnline ? -1 : 1;
+                }
+                
+                // 在线状态相同时，按WAN流量排序
                 var aTraffic = (a.wide_tx_bytes || 0) + (a.wide_rx_bytes || 0);
                 var bTraffic = (b.wide_tx_bytes || 0) + (b.wide_rx_bytes || 0);
-                return ascending ? (aTraffic - bTraffic) : (bTraffic - aTraffic);
+                if (aTraffic !== bTraffic) {
+                    return ascending ? (aTraffic - bTraffic) : (bTraffic - aTraffic);
+                }
+                
+                // 流量相同时，按IP地址排序
+                return compareIP(a.ip, b.ip);
             });
             break;
             
@@ -1850,20 +3351,11 @@ function sortDevices(devices, sortBy, ascending) {
                     return aOnline ? -1 : 1;
                 }
                 
-                // 在线状态相同时，按IP地址排序
-                var aIp = a.ip || '';
-                var bIp = b.ip || '';
-                var aIpParts = aIp.split('.').map(function(part) { return parseInt(part) || 0; });
-                var bIpParts = bIp.split('.').map(function(part) { return parseInt(part) || 0; });
+                // 在线状态相同时，按IP地址排序（小的在前）
+                var ipCompare = compareIP(a.ip, b.ip);
+                if (ipCompare !== 0) return ipCompare;
                 
-                for (var i = 0; i < 4; i++) {
-                    var aPart = aIpParts[i] || 0;
-                    var bPart = bIpParts[i] || 0;
-                    if (aPart !== bPart) {
-                        return aPart - bPart;
-                    }
-                }
-                
+                // IP相同时，按MAC地址排序
                 return (a.mac || '').localeCompare(b.mac || '');
             });
     }
@@ -1983,6 +3475,30 @@ function formatLastOnlineExactTime(lastOnlineTs) {
 
 function formatRetentionSeconds(seconds) {
     if (!seconds || seconds <= 0) return '';
+    
+    // 固定值映射
+    if (seconds === 600) {
+        return _('Last 10 Minutes');
+    }
+    if (seconds === 900) {
+        return _('Last 15 Minutes');
+    }
+    if (seconds === 1800) {
+        return _('Last 30 Minutes');
+    }
+    if (seconds === 3600) {
+        return _('Last 1 Hour');
+    }
+    if (seconds === 86400) {
+        return _('Last 24 Hours');
+    }
+    if (seconds === 604800) {
+        return _('Last 7 Days');
+    }
+    if (seconds === 2592000) {
+        return _('Last 30 Days');
+    }
+    
     var value;
     var unitKey;
     if (seconds < 60) {
@@ -2009,6 +3525,66 @@ function formatRetentionSeconds(seconds) {
     return _('Last') + ' ' + value + ' ' + unitKey;
 }
 
+// 移动端数据采样函数：最多显示指定数量的点，保留首尾点
+function downsampleForMobile(data, labels, upSeries, downSeries, maxPoints) {
+    if (!data || data.length <= maxPoints) {
+        return {
+            data: data,
+            labels: labels,
+            upSeries: upSeries,
+            downSeries: downSeries,
+            indices: data.map(function(_, i) { return i; }) // 原始索引映射
+        };
+    }
+    
+    var n = data.length;
+    var sampledData = [];
+    var sampledLabels = [];
+    var sampledUp = [];
+    var sampledDown = [];
+    var indices = []; // 记录每个采样点对应的原始数据索引
+    
+    // 均匀采样，保留首尾点
+    var step = (n - 1) / (maxPoints - 1);
+    
+    for (var i = 0; i < maxPoints; i++) {
+        var idx = Math.round(i * step);
+        // 确保索引在有效范围内
+        idx = Math.min(idx, n - 1);
+        
+        sampledData.push(data[idx]);
+        sampledLabels.push(labels[idx]);
+        sampledUp.push(upSeries[idx]);
+        sampledDown.push(downSeries[idx]);
+        indices.push(idx); // 保存原始索引
+    }
+    
+    // 确保首尾点被包含
+    if (indices[0] !== 0) {
+        sampledData[0] = data[0];
+        sampledLabels[0] = labels[0];
+        sampledUp[0] = upSeries[0];
+        sampledDown[0] = downSeries[0];
+        indices[0] = 0;
+    }
+    if (indices[indices.length - 1] !== n - 1) {
+        var lastIdx = sampledData.length - 1;
+        sampledData[lastIdx] = data[n - 1];
+        sampledLabels[lastIdx] = labels[n - 1];
+        sampledUp[lastIdx] = upSeries[lastIdx];
+        sampledDown[lastIdx] = downSeries[lastIdx];
+        indices[lastIdx] = n - 1;
+    }
+    
+    return {
+        data: sampledData,
+        labels: sampledLabels,
+        upSeries: sampledUp,
+        downSeries: sampledDown,
+        indices: indices
+    };
+}
+
         function refreshHistory() {
             // 若鼠标在历史图上悬停，则暂停刷新以避免自动滚动
             if (historyHover) return Promise.resolve();
@@ -2024,7 +3600,9 @@ function formatRetentionSeconds(seconds) {
             
 
             return fetchMetricsData(mac).then(function (res) {
-                var data = Array.isArray(res && res.metrics) ? res.metrics.slice() : [];
+                // 将数组数组格式转换为对象数组格式
+                var rawMetrics = res && res.metrics ? res.metrics : [];
+                var data = convertMetricsArrayToObjects(rawMetrics);
                 lastHistoryData = data;
 
                 var retentionBadge = document.getElementById('history-retention');
@@ -2040,14 +3618,70 @@ function formatRetentionSeconds(seconds) {
                     return;
                 }
 
-                // 不做时间过滤，按时间升序排序，完整展示
+                // 按时间升序排序
                 var filtered = data.slice();
                 filtered.sort(function (a, b) { return (a.ts_ms || 0) - (b.ts_ms || 0); });
+
+                // 检测是否为移动端
+                var screenWidth = window.innerWidth || document.documentElement.clientWidth;
+                var isMobileScreen = screenWidth <= 768;
+                
+                var displayData = filtered; // 用于 tooltip 显示的原始数据
+                var indexMapping = null; // 采样后的索引映射到原始数据的索引
+                var timeRangeBadge = document.getElementById('history-time-range');
+                
+                // 移动端：只显示最近 20 秒的数据
+                if (isMobileScreen && filtered.length > 0) {
+                    var currentTime = Date.now();
+                    var twentySecondsAgo = currentTime - 20000; // 20 秒前
+                    
+                    // 过滤出最近 20 秒的数据
+                    var recentData = filtered.filter(function(item) {
+                        var ts = item.ts_ms || 0;
+                        // 如果时间戳是秒级，转换为毫秒
+                        if (ts < 1000000000000) ts = ts * 1000;
+                        return ts >= twentySecondsAgo;
+                    });
+                    
+                    // 如果没有最近 20 秒的数据，使用最后 20 个数据点（或全部，如果少于 20 个）
+                    if (recentData.length === 0 && filtered.length > 0) {
+                        recentData = filtered.slice(-20); // 取最后 20 个点
+                    }
+                    
+                    // 如果数据点超过 20 个，进行采样
+                    if (recentData.length > 20) {
+                        var keys = getTypeKeys(type);
+                        var tempUpSeries = recentData.map(function (x) { return x[keys.up] || 0; });
+                        var tempDownSeries = recentData.map(function (x) { return x[keys.down] || 0; });
+                        var tempLabels = recentData.map(function (x) { return msToTimeLabel(x.ts_ms); });
+                        
+                        var sampled = downsampleForMobile(recentData, tempLabels, tempUpSeries, tempDownSeries, 20);
+                        filtered = sampled.data;
+                        // 索引映射：sampled.indices 是 recentData 中的索引，直接使用即可
+                        indexMapping = sampled.indices;
+                    } else {
+                        filtered = recentData;
+                        // 创建完整的索引映射（1:1），索引直接对应 recentData 的索引
+                        indexMapping = recentData.map(function(_, i) { return i; });
+                    }
+                    
+                    // 保存原始数据用于 tooltip（recentData 的索引与 indexMapping 对应）
+                    displayData = recentData;
+                } else {
+                    // PC端：显示所有数据，创建完整的索引映射（1:1）
+                    indexMapping = filtered.map(function(_, i) { return i; });
+                }
 
                 var keys = getTypeKeys(type);
                 var upSeries = filtered.map(function (x) { return x[keys.up] || 0; });
                 var downSeries = filtered.map(function (x) { return x[keys.down] || 0; });
                 var labels = filtered.map(function (x) { return msToTimeLabel(x.ts_ms); });
+                
+                // 保存索引映射到 canvas，供 tooltip 使用
+                if (canvas) {
+                    canvas.__bandixIndexMapping = indexMapping;
+                    canvas.__bandixDisplayData = displayData; // 保存用于 tooltip 的原始数据
+                }
 
                 drawHistoryChartWithZoom(canvas, labels, upSeries, downSeries);
 
@@ -2074,23 +3708,40 @@ function formatRetentionSeconds(seconds) {
                     // 如果处于缩放状态，需要将显示索引映射回原始数据索引
                     if (info.scale && info.scale > 1 && info.originalLabels) {
                         var startIdx = Math.floor(info.offsetX || 0);
-                        return startIdx + minIdx;
+                        minIdx = startIdx + minIdx;
+                    }
+                    
+                    // 使用索引映射将显示索引转换为原始数据索引（移动端采样后需要）
+                    var indexMapping = canvas.__bandixIndexMapping;
+                    if (indexMapping && indexMapping[minIdx] !== undefined) {
+                        return indexMapping[minIdx];
                     }
                     
                     return minIdx;
                 }
 
 				function onMove(evt) {
+					// 移动端禁用悬浮功能
+					var screenWidth = window.innerWidth || document.documentElement.clientWidth;
+					if (screenWidth <= 768) {
+						if (tooltip) tooltip.style.display = 'none';
+						return;
+					}
+					
 					if (!tooltip) return;
 					var idx = findNearestIndex(evt);
-					if (idx < 0 || !lastHistoryData || !lastHistoryData[idx]) {
+					
+					// 优先使用 displayData（移动端过滤后的数据），否则使用 lastHistoryData
+					var dataSource = (canvas && canvas.__bandixDisplayData) ? canvas.__bandixDisplayData : lastHistoryData;
+					
+					if (idx < 0 || !dataSource || !dataSource[idx]) {
                         tooltip.style.display = 'none';
                         // 清除 hover 状态并请求重绘去掉虚线
                         historyHover = false;
                         try { if (canvas && canvas.__bandixChart) { delete canvas.__bandixChart.hoverIndex; drawHistoryChart(canvas, canvas.__bandixChart.originalLabels || [], canvas.__bandixChart.originalUpSeries || [], canvas.__bandixChart.originalDownSeries || [], zoomScale, zoomOffsetX); } } catch(e){}
 						return;
 					}
-                    var point = lastHistoryData[idx];
+                    var point = dataSource[idx];
                     // 设置 hover 状态，暂停历史轮询刷新
                     historyHover = true;
                     historyHoverIndex = idx;
@@ -2189,13 +3840,29 @@ function formatRetentionSeconds(seconds) {
 					var maxY = (typeof window !== 'undefined' ? window.innerHeight : document.documentElement.clientHeight) - 4;
 					var cx = evt.clientX;
 					var cy = evt.clientY;
-					var baseX = cx + padding; // 右上（水平向右）
-					var baseY = cy - th - padding; // 上方
-					// 若右侧溢出，改为左上
-					if (baseX + tw > maxX) {
-						baseX = cx - tw - padding;
+					
+					// 检测是否为移动端
+					var isMobileScreen = maxX <= 768;
+					
+					var baseX, baseY;
+					if (isMobileScreen) {
+						// 移动端：居中显示在触摸点下方
+						baseX = Math.max(4, Math.min(maxX - tw - 4, cx - tw / 2));
+						baseY = cy + padding; // 显示在触摸点下方
+						// 如果下方空间不足，显示在上方
+						if (baseY + th > maxY) {
+							baseY = cy - th - padding;
+						}
+					} else {
+						// PC端：右上（水平向右）
+						baseX = cx + padding;
+						baseY = cy - th - padding; // 上方
+						// 若右侧溢出，改为左上
+						if (baseX + tw > maxX) {
+							baseX = cx - tw - padding;
+						}
 					}
-					// 边界收缩（不改动上方定位的语义）
+					// 边界收缩
 					if (baseX < 4) baseX = 4;
 					if (baseY < 4) baseY = 4;
 
@@ -2277,8 +3944,21 @@ function formatRetentionSeconds(seconds) {
                     } catch(e){}
                 };
 
-                canvas.onmousemove = onMove;
-                canvas.onmouseleave = onLeave;
+                // 检测是否为移动端
+                var screenWidth = window.innerWidth || document.documentElement.clientWidth;
+                var isMobileScreen = screenWidth <= 768;
+                
+                // 移动端禁用悬浮功能，PC端启用
+                if (!isMobileScreen) {
+                    canvas.onmousemove = onMove;
+                    canvas.onmouseleave = onLeave;
+                } else {
+                    // 移动端：不绑定任何悬浮相关事件
+                    // 确保 tooltip 在移动端不显示
+                    if (tooltip) {
+                        tooltip.style.display = 'none';
+                    }
+                }
             }).catch(function () {
                 var ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2289,14 +3969,99 @@ function formatRetentionSeconds(seconds) {
             });
         }
 
-        // 历史趋势：事件绑定
-        (function initHistoryControls() {
+        // 历史趋势：事件绑定（延迟执行以确保 DOM 已加载）
+        function initHistoryControls() {
             var typeSel = document.getElementById('history-type-select');
             var devSel = document.getElementById('history-device-select');
             if (typeSel) typeSel.value = 'total';
             
             // 初始化缩放倍率显示
             updateZoomLevelDisplay();
+            
+            // Tab 切换事件处理
+            var tabButtons = document.querySelectorAll('.history-tab');
+            
+            // 确保找到了 tab 按钮
+            if (tabButtons.length === 0) {
+                console.warn('History tab buttons not found, retrying...');
+                setTimeout(initHistoryControls, 100);
+                return;
+            }
+            
+            tabButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var range = this.getAttribute('data-range');
+                    
+                    // 更新当前选择的时间范围
+                    currentTimeRange = range;
+                    localStorage.setItem('bandix_time_range', range);
+                    
+                    // 更新 tab 状态
+                    tabButtons.forEach(function(b) {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // 对于非实时时间范围，禁用 LAN 和 Total 选项（因为只有 WAN 数据）
+                    if (range !== 'realtime') {
+                        if (typeSel) {
+                            // 如果当前选择的是 LAN 或 Total，切换到 WAN
+                            if (typeSel.value === 'lan' || typeSel.value === 'total') {
+                                typeSel.value = 'wan';
+                            }
+                            // 禁用 LAN 和 Total 选项
+                            var lanOption = typeSel.querySelector('option[value="lan"]');
+                            var totalOption = typeSel.querySelector('option[value="total"]');
+                            if (lanOption) lanOption.disabled = true;
+                            if (totalOption) totalOption.disabled = true;
+                        }
+                    } else {
+                        // 实时模式下，启用所有选项
+                        if (typeSel) {
+                            var lanOption = typeSel.querySelector('option[value="lan"]');
+                            var totalOption = typeSel.querySelector('option[value="total"]');
+                            if (lanOption) lanOption.disabled = false;
+                            if (totalOption) totalOption.disabled = false;
+                        }
+                    }
+                    
+                    // 刷新历史数据
+                    refreshHistory();
+                });
+            });
+            
+            // 恢复之前选择的时间范围
+            var savedRange = localStorage.getItem('bandix_time_range') || 'realtime';
+            
+            // 移动端强制使用 realtime
+            var screenWidth = window.innerWidth || document.documentElement.clientWidth;
+            var isMobileScreen = screenWidth <= 768;
+            if (isMobileScreen) {
+                savedRange = 'realtime';
+                currentTimeRange = 'realtime';
+                localStorage.setItem('bandix_time_range', 'realtime');
+            } else {
+                currentTimeRange = savedRange;
+            }
+            
+            tabButtons.forEach(function(btn) {
+                if (btn.getAttribute('data-range') === savedRange) {
+                    btn.classList.add('active');
+                    // 触发一次点击以应用选项禁用逻辑
+                    if (savedRange !== 'realtime' && typeSel) {
+                        var lanOption = typeSel.querySelector('option[value="lan"]');
+                        var totalOption = typeSel.querySelector('option[value="total"]');
+                        if (lanOption) lanOption.disabled = true;
+                        if (totalOption) totalOption.disabled = true;
+                        if (typeSel.value === 'lan' || typeSel.value === 'total') {
+                            typeSel.value = 'wan';
+                        }
+                    }
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
 			function onFilterChange() {
 				refreshHistory();
 				// 同步刷新表格（立即生效，不等轮询）
@@ -2306,37 +4071,35 @@ function formatRetentionSeconds(seconds) {
 			if (devSel) devSel.addEventListener('change', onFilterChange);
 
             window.addEventListener('resize', function () {
-                if (lastHistoryData && lastHistoryData.length) {
-                    // 重新绘制当前数据（保持当前筛选）
-                    var type = document.getElementById('history-type-select')?.value || 'total';
-                    var canvas = document.getElementById('history-canvas');
-                    if (!canvas) return;
-                    var filtered = lastHistoryData.slice();
-                    filtered.sort(function (a, b) { return (a.ts_ms || 0) - (b.ts_ms || 0); });
-                    var keys = getTypeKeys(type);
-                    var upSeries = filtered.map(function (x) { return x[keys.up] || 0; });
-                    var downSeries = filtered.map(function (x) { return x[keys.down] || 0; });
-                    var labels = filtered.map(function (x) { return msToTimeLabel(x.ts_ms); });
-                    drawHistoryChartWithZoom(canvas, labels, upSeries, downSeries);
-                } else {
-                    refreshHistory();
-                }
+                // 窗口大小改变时，重新刷新历史数据以应用移动端过滤逻辑
+                refreshHistory();
             });
 
             // 首次加载
             refreshHistory();
-        })();
+        }
+        
+        // 延迟执行以确保 DOM 已加载
+        setTimeout(initHistoryControls, 0);
 
-        // 历史趋势轮询（每1秒）
+        // 历史趋势轮询（实时数据每1秒，其他时间范围每30秒）
+        // 使用 poll.add 但根据时间范围动态调整
         poll.add(function () {
             return refreshHistory();
-        },1);
+        }, 1);
 
 
+
+        // 存储移动端卡片展开状态（设备MAC地址集合）
+        var expandedDeviceCards = new Set();
 
         // 定义更新设备数据的函数
         function updateDeviceData() {
-            return callStatus().then(function (result) {
+            return Promise.all([
+                callStatus(),
+                fetchAllScheduleRules()
+            ]).then(function (results) {
+                var result = results[0];
                 var trafficDiv = document.getElementById('traffic-status');
                 var deviceCountDiv = document.getElementById('device-count');
                 var statsGrid = document.getElementById('stats-grid');
@@ -2441,11 +4204,7 @@ function formatRetentionSeconds(seconds) {
                         } else {
                             // 不同列，默认降序（对于速度和流量，降序更有意义）
                             currentSortBy = newSortBy;
-                            if (newSortBy === 'hostname' || newSortBy === 'ip' || newSortBy === 'mac') {
-                                currentSortOrder = true; // 文本类默认升序
-                            } else {
-                                currentSortOrder = false; // 数值类默认降序
-                            }
+                            currentSortOrder = false; // 所有排序默认降序
                         }
                         
                         // 保存状态
@@ -2541,10 +4300,10 @@ function formatRetentionSeconds(seconds) {
                 var table = E('table', { 'class': 'bandix-table' }, [
                     E('thead', {}, [
                         E('tr', {}, [
-                            createSortableHeader(_('Device Info'), 'hostname'),
+                            createSortableHeader(_('Device Info'), 'online'),
                             createSplitHeader(_('LAN Traffic'), 'lan_speed', 'lan_traffic'),
                             createSplitHeader(_('WAN Traffic'), 'wan_speed', 'wan_traffic'),
-                            E('th', {}, _('Rate Limit')),
+                            E('th', {}, _('Schedule Rules')),
                             E('th', {}, _('Actions'))
                         ])
                     ]),
@@ -2552,6 +4311,9 @@ function formatRetentionSeconds(seconds) {
                 ]);
 
                 var tbody = table.querySelector('tbody');
+                
+                // 创建移动端卡片容器
+                var cardsContainer = E('div', { 'class': 'device-list-cards' });
 
 				// 过滤：按选择设备
 				var selectedMac = (typeof document !== 'undefined' ? (document.getElementById('history-device-select')?.value || '') : '');
@@ -2585,7 +4347,10 @@ function formatRetentionSeconds(seconds) {
                     });
 
 					// 获取当前显示模式
-					var deviceMode = localStorage.getItem('bandix_device_mode') || 'simple';
+					// 移动端强制使用 SimpleMode
+					var screenWidth = window.innerWidth || document.documentElement.clientWidth;
+					var isMobileScreen = screenWidth <= 768;
+					var deviceMode = isMobileScreen ? 'simple' : (localStorage.getItem('bandix_device_mode') || 'simple');
 					var isDetailedMode = deviceMode === 'detailed';
 
 					// 构建设备信息元素
@@ -2664,19 +4429,174 @@ function formatRetentionSeconds(seconds) {
                             ])
                         ]),
 
-                        // 限速设置
-                        E('td', {}, [
-                            E('div', { 'class': 'limit-info' }, [
-                                E('div', { 'class': 'traffic-row' }, [
-                                    E('span', { 'class': 'traffic-icon upload', 'style': 'font-size: 0.75rem;' }, '↑'),
-                                    E('span', { 'style': 'font-size: 0.875rem;' }, formatByterate(device.wide_tx_rate_limit || 0, speedUnit))
-                                ]),
-                                E('div', { 'class': 'traffic-row' }, [
-                                    E('span', { 'class': 'traffic-icon download', 'style': 'font-size: 0.75rem;' }, '↓'),
-                                    E('span', { 'style': 'font-size: 0.875rem;' }, formatByterate(device.wide_rx_rate_limit || 0, speedUnit))
-                                ]),
-                            ])
-                        ]),
+                        // 定时限速规则
+                        (function() {
+                            var activeRules = getActiveRulesForDevice(device.mac);
+                            var allDeviceRules = allScheduleRules.filter(function(r) { return r && r.mac === device.mac; });
+                            
+                            var rulesInfo = E('div', { 'class': 'schedule-rules-info' }, []);
+                            
+                            if (allDeviceRules.length === 0) {
+                                rulesInfo.appendChild(E('div', { 'style': 'font-size: 0.75rem; opacity: 0.6;' }, '-'));
+                            } else {
+                                // 显示规则总数
+                                rulesInfo.appendChild(E('div', { 
+                                    'style': 'font-size: 0.75rem; font-weight: 600; margin-bottom: 4px;' 
+                                }, allDeviceRules.length + ' ' + (allDeviceRules.length === 1 ? _('rule') : _('rules'))));
+                                
+                                // 显示当前生效的规则
+                                if (activeRules.length > 0) {
+                                    // 合并多个规则的限制值
+                                    var mergedLimits = mergeActiveRulesLimits(activeRules);
+                                    var uploadLimit = mergedLimits.uploadLimit;
+                                    var downloadLimit = mergedLimits.downloadLimit;
+                                    
+                                    // 显示限速值（箭头固定颜色，文字默认颜色）
+                                    var limitsContainer = E('div', { 
+                                        'style': 'font-size: 0.75rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' 
+                                    });
+                                    
+                                    // 上传限速（橙色箭头）
+                                    var uploadSpan = E('span', {});
+                                    uploadSpan.appendChild(E('span', { 'style': 'color: #f97316;' }, '↑'));
+                                    uploadSpan.appendChild(document.createTextNode(uploadLimit > 0 ? formatByterate(uploadLimit, speedUnit) : _('Unlimited')));
+                                    limitsContainer.appendChild(uploadSpan);
+                                    
+                                    // 下载限速（青色箭头）
+                                    var downloadSpan = E('span', {});
+                                    downloadSpan.appendChild(E('span', { 'style': 'color: #06b6d4;' }, '↓'));
+                                    downloadSpan.appendChild(document.createTextNode(downloadLimit > 0 ? formatByterate(downloadLimit, speedUnit) : _('Unlimited')));
+                                    limitsContainer.appendChild(downloadSpan);
+                                    
+                                    rulesInfo.appendChild(limitsContainer);
+                                } else {
+                                    rulesInfo.appendChild(E('div', { 
+                                        'style': 'font-size: 0.75rem; opacity: 0.5;' 
+                                    }, _('No active rule')));
+                                }
+                            }
+                            
+                            // PC 端添加鼠标悬浮事件（显示所有规则）- 只要有规则就绑定事件
+                            var screenWidth = window.innerWidth || document.documentElement.clientWidth;
+                            if (screenWidth > 768 && allDeviceRules.length > 0) {
+                                rulesInfo.onmouseenter = function(evt) {
+                                    var tooltip = document.getElementById('schedule-rules-tooltip');
+                                    if (!tooltip) return;
+                                    
+                                    var html = buildScheduleRulesTooltipHtml(allDeviceRules, activeRules, speedUnit);
+                                    if (!html) return;
+                                    
+                                    tooltip.innerHTML = html;
+                                    
+                                    // 应用主题颜色
+                                    try {
+                                        var cbiSection = document.querySelector('.cbi-section');
+                                        var targetElement = cbiSection || document.querySelector('.main') || document.body;
+                                        var computedStyle = window.getComputedStyle(targetElement);
+                                        var bgColor = computedStyle.backgroundColor;
+                                        var textColor = computedStyle.color;
+                                        
+                                        if (bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+                                            var rgbaMatch = bgColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+                                            if (rgbaMatch) {
+                                                var r = parseInt(rgbaMatch[1]);
+                                                var g = parseInt(rgbaMatch[2]);
+                                                var b = parseInt(rgbaMatch[3]);
+                                                var alpha = rgbaMatch[4] ? parseFloat(rgbaMatch[4]) : 1;
+                                                if (alpha < 0.95) {
+                                                    tooltip.style.backgroundColor = 'rgb(' + r + ', ' + g + ', ' + b + ')';
+                                                } else {
+                                                    tooltip.style.backgroundColor = bgColor;
+                                                }
+                                            } else {
+                                                tooltip.style.backgroundColor = bgColor;
+                                            }
+                                        }
+                                        
+                                        if (textColor && textColor !== 'rgba(0, 0, 0, 0)') {
+                                            tooltip.style.color = textColor;
+                                        }
+                                    } catch(e) {}
+                                    
+                                    // 先隐藏，设置内容后再显示以计算尺寸
+                                    tooltip.style.display = 'block';
+                                    tooltip.style.visibility = 'hidden';
+                                    tooltip.style.left = '-9999px';
+                                    tooltip.style.top = '-9999px';
+                                    
+                                    // 强制浏览器计算尺寸
+                                    var tw = tooltip.offsetWidth || 0;
+                                    var th = tooltip.offsetHeight || 0;
+                                    
+                                    if (tw === 0 || th === 0) {
+                                        tooltip.style.display = 'none';
+                                        return;
+                                    }
+                                    
+                                    tooltip.style.visibility = 'visible';
+                                    
+                                    var padding = 12;
+                                    var maxX = window.innerWidth - 4;
+                                    var maxY = window.innerHeight - 4;
+                                    
+                                    var rect = evt.currentTarget.getBoundingClientRect();
+                                    var cx = rect.left + rect.width / 2;
+                                    var cy = rect.top + rect.height / 2;
+                                    
+                                    // 计算位置：优先显示在右侧，如果空间不足则显示在左侧
+                                    var baseX = cx + padding;
+                                    var baseY = cy - th / 2;
+                                    
+                                    if (baseX + tw > maxX) {
+                                        baseX = cx - tw - padding;
+                                    }
+                                    
+                                    if (baseY < 4) baseY = 4;
+                                    if (baseY + th > maxY) baseY = maxY - th - 4;
+                                    
+                                    tooltip.style.left = baseX + 'px';
+                                    tooltip.style.top = baseY + 'px';
+                                };
+                                
+                                rulesInfo.onmouseleave = function() {
+                                    var tooltip = document.getElementById('schedule-rules-tooltip');
+                                    if (tooltip) {
+                                        tooltip.style.display = 'none';
+                                        tooltip.style.visibility = 'visible';
+                                    }
+                                };
+                                
+                                rulesInfo.onmousemove = function(evt) {
+                                    var tooltip = document.getElementById('schedule-rules-tooltip');
+                                    if (!tooltip || tooltip.style.display === 'none') return;
+                                    
+                                    var tw = tooltip.offsetWidth || 0;
+                                    var th = tooltip.offsetHeight || 0;
+                                    var padding = 12;
+                                    var maxX = window.innerWidth - 4;
+                                    var maxY = window.innerHeight - 4;
+                                    
+                                    var rect = evt.currentTarget.getBoundingClientRect();
+                                    var cx = rect.left + rect.width / 2;
+                                    var cy = rect.top + rect.height / 2;
+                                    
+                                    var baseX = cx + padding;
+                                    var baseY = cy - th / 2;
+                                    
+                                    if (baseX + tw > maxX) {
+                                        baseX = cx - tw - padding;
+                                    }
+                                    
+                                    if (baseY < 4) baseY = 4;
+                                    if (baseY + th > maxY) baseY = maxY - th - 4;
+                                    
+                                    tooltip.style.left = baseX + 'px';
+                                    tooltip.style.top = baseY + 'px';
+                                };
+                            }
+                            
+                            return E('td', {}, rulesInfo);
+                        })(),
 
                         // 操作
                         E('td', {}, [
@@ -2685,11 +4605,119 @@ function formatRetentionSeconds(seconds) {
                     ]);
 
                     tbody.appendChild(row);
+                    
+                    // 创建移动端卡片
+                    var card = E('div', { 'class': 'device-card' }, [
+                        // 卡片头部
+                        E('div', { 'class': 'device-card-header' }, [
+                            E('div', { 'class': 'device-card-name' }, [
+                                E('span', { 'class': 'device-status ' + (isOnline ? 'online' : 'offline') }),
+                                E('div', {}, [
+                                    E('div', { 'style': 'font-weight: 600;' }, device.hostname || '-'),
+                                    E('div', { 'class': 'device-card-ip' }, device.ip)
+                                ])
+                            ]),
+                            E('div', { 'class': 'device-card-action' }, [
+                                (function() {
+                                    var cardActionBtn = E('button', {
+                                        'class': 'cbi-button cbi-button-action',
+                                        'title': _('Settings')
+                                    }, buttonText);
+                                    cardActionBtn.addEventListener('click', function() {
+                                        showRateLimitModal(device);
+                                    });
+                                    return cardActionBtn;
+                                })()
+                            ])
+                        ]),
+                        // 卡片主要内容（WAN流量）
+                        E('div', { 'class': 'device-card-content' }, [
+                            // WAN流量
+                            E('div', { 'class': 'device-card-section' }, [
+                                E('div', { 'class': 'device-card-section-label' }, _('WAN Traffic')),
+                                E('div', { 'class': 'device-card-traffic' }, [
+                                    E('div', { 'class': 'device-card-traffic-row' }, [
+                                        E('span', { 'style': 'color: #f97316; font-size: 0.75rem; font-weight: bold;' }, '↑'),
+                                        E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.wide_tx_rate || 0, speedUnit)),
+                                        E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.wide_tx_bytes || 0) + ')')
+                                    ]),
+                                    E('div', { 'class': 'device-card-traffic-row' }, [
+                                        E('span', { 'style': 'color: #06b6d4; font-size: 0.75rem; font-weight: bold;' }, '↓'),
+                                        E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.wide_rx_rate || 0, speedUnit)),
+                                        E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.wide_rx_bytes || 0) + ')')
+                                    ])
+                                ])
+                            ])
+                        ]),
+                        // 定时限速规则
+                        (function() {
+                            var activeRules = getActiveRulesForDevice(device.mac);
+                            var allDeviceRules = allScheduleRules.filter(function(r) { return r && r.mac === device.mac; });
+                            
+                            if (allDeviceRules.length === 0) {
+                                return E('div', { 'class': 'device-card-section device-card-rules' }, [
+                                    E('div', { 'class': 'device-card-section-label' }, _('Schedule Rules')),
+                                    E('div', { 'class': 'device-card-rules-empty' }, '-')
+                                ]);
+                            }
+                            
+                            var rulesContent = E('div', { 'class': 'device-card-rules-content' });
+                            
+                            // 显示规则总数
+                            rulesContent.appendChild(E('div', { 
+                                'class': 'device-card-rules-count' 
+                            }, allDeviceRules.length + ' ' + (allDeviceRules.length === 1 ? _('rule') : _('rules'))));
+                            
+                            if (activeRules.length > 0) {
+                                // 合并多个规则的限制值
+                                var mergedLimits = mergeActiveRulesLimits(activeRules);
+                                var uploadLimit = mergedLimits.uploadLimit;
+                                var downloadLimit = mergedLimits.downloadLimit;
+                                
+                                // 显示限速值
+                                var limitsText = [];
+                                limitsText.push('↑' + (uploadLimit > 0 ? formatByterate(uploadLimit, speedUnit) : _('Unlimited')));
+                                limitsText.push('↓' + (downloadLimit > 0 ? formatByterate(downloadLimit, speedUnit) : _('Unlimited')));
+                                
+                                rulesContent.appendChild(E('div', { 
+                                    'class': 'device-card-rules-active-time' 
+                                }, limitsText.join(' ')));
+                            } else {
+                                rulesContent.appendChild(E('div', { 
+                                    'class': 'device-card-rules-inactive' 
+                                }, _('No active rule')));
+                            }
+                            
+                            return E('div', { 'class': 'device-card-section device-card-rules' }, [
+                                E('div', { 'class': 'device-card-section-label' }, _('Schedule Rules')),
+                                rulesContent
+                            ]);
+                        })(),
+                        // LAN流量（直接显示，不需要展开/收起）
+                        E('div', { 'class': 'device-card-section', 'style': 'margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0, 0, 0, 0.1);' }, [
+                            E('div', { 'class': 'device-card-section-label' }, _('LAN Traffic')),
+                            E('div', { 'class': 'device-card-traffic' }, [
+                                E('div', { 'class': 'device-card-traffic-row' }, [
+                                    E('span', { 'style': 'color: #f97316; font-size: 0.75rem; font-weight: bold;' }, '↑'),
+                                    E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.local_tx_rate || 0, speedUnit)),
+                                    E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.local_tx_bytes || 0) + ')')
+                                ]),
+                                E('div', { 'class': 'device-card-traffic-row' }, [
+                                    E('span', { 'style': 'color: #06b6d4; font-size: 0.75rem; font-weight: bold;' }, '↓'),
+                                    E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.local_rx_rate || 0, speedUnit)),
+                                    E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.local_rx_bytes || 0) + ')')
+                                ])
+                            ])
+                        ])
+                    ]);
+                    
+                    cardsContainer.appendChild(card);
                 });
 
                 // 更新表格内容
 				trafficDiv.innerHTML = '';
 				trafficDiv.appendChild(table);
+				trafficDiv.appendChild(cardsContainer);
 				// 暴露一个立即重绘表格的函数，供筛选变化时调用
 				try { window.__bandixRenderTable = function(){
 					// 重新触发完整的数据更新和渲染
@@ -2706,9 +4734,82 @@ function formatRetentionSeconds(seconds) {
 
         // 轮询获取数据
         poll.add(updateDeviceData, 1);
+        
+        // 轮询获取定时限速规则（每5秒）
+        poll.add(function() {
+            return fetchAllScheduleRules().then(function() {
+                // 规则更新后，重新渲染表格以显示最新的规则状态
+                if (window.__bandixRenderTable) {
+                    window.__bandixRenderTable();
+                }
+            });
+        }, 5000);
 
         // 立即执行一次，不等待轮询
         updateDeviceData();
+        fetchAllScheduleRules();
+        
+        // 异步加载版本信息（不阻塞主流程）
+        (function() {
+            // 延迟执行，确保页面先完成初始化
+            setTimeout(function() {
+                callGetVersion().then(function(result) {
+                    if (result) {
+                        // 显示 luci-app-bandix 版本
+                        var luciVersionEl = document.getElementById('bandix-luci-version');
+                        if (luciVersionEl && result.luci_app_version) {
+                            luciVersionEl.textContent = result.luci_app_version;
+                        }
+                        
+                        // 显示 bandix 版本
+                        var coreVersionEl = document.getElementById('bandix-core-version');
+                        if (coreVersionEl && result.bandix_version) {
+                            coreVersionEl.textContent = result.bandix_version;
+                        }
+                    }
+                }).catch(function(err) {
+                    // 静默失败，不影响页面功能
+                    console.debug('Failed to load version:', err);
+                });
+            }, 100);
+        })();
+        
+        // 异步检查更新（不阻塞主流程）
+        (function() {
+            // 延迟执行，确保页面先完成初始化，更新检查可能需要网络请求
+            setTimeout(function() {
+                callCheckUpdate().then(function(result) {
+                    if (!result) return;
+                    
+                    // 检查是否有更新（luci-app-bandix 或 bandix）
+                    var hasUpdate = false;
+                    if (result.luci_has_update === true || result.luci_has_update === '1' || result.luci_has_update === 1) {
+                        hasUpdate = true;
+                    }
+                    if (result.bandix_has_update === true || result.bandix_has_update === '1' || result.bandix_has_update === 1) {
+                        hasUpdate = true;
+                    }
+                    
+                    // 显示或隐藏更新提示
+                    var updateBadge = document.getElementById('bandix-update-badge');
+                    if (updateBadge) {
+                        if (hasUpdate) {
+                            updateBadge.style.display = 'inline-block';
+                            // 点击跳转到设置页面
+                            updateBadge.onclick = function() {
+                                window.location.href = '/cgi-bin/luci/admin/network/bandix/settings';
+                            };
+                            updateBadge.title = _('Update available, click to go to settings');
+                        } else {
+                            updateBadge.style.display = 'none';
+                        }
+                    }
+                }).catch(function(err) {
+                    // 静默失败，不影响页面功能
+                    console.debug('Failed to check update:', err);
+                });
+            }, 500);
+        })();
 
         // 自动适应主题背景色和文字颜色的函数（仅应用于弹窗和 tooltip）
         function applyThemeColors() {

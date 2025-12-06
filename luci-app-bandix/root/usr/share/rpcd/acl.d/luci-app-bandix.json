@@ -6,11 +6,22 @@
 				"luci.bandix": [
 					"getStatus",
 					"getMetrics",
-					"setRateLimit",
+					"getMetricsDay",
+					"getMetricsWeek",
+					"getMetricsMonth",
 					"getConnection",
 					"setHostname",
 					"getDnsQueries",
-					"getDnsStats"
+					"getDnsStats",
+					"getScheduleLimits",
+					"setScheduleLimit",
+					"deleteScheduleLimit",
+					"clearData",
+					"restartService",
+					"getVersion",
+					"getSystemArch",
+					"checkUpdate",
+					"installUpdate"
 				]
 			},
 			"uci": [
@@ -20,13 +31,24 @@
 		"write": {
 			"ubus": {
 				"luci.bandix": [
-					"setRateLimit",
 					"getStatus",
 					"getMetrics",
+					"getMetricsDay",
+					"getMetricsWeek",
+					"getMetricsMonth",
 					"getConnection",
 					"setHostname",
 					"getDnsQueries",
-					"getDnsStats"
+					"getDnsStats",
+					"getScheduleLimits",
+					"setScheduleLimit",
+					"deleteScheduleLimit",
+					"clearData",
+					"restartService",
+					"getVersion",
+					"getSystemArch",
+					"checkUpdate",
+					"installUpdate"
 				]
 			},
 			"uci": [

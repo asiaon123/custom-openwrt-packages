@@ -671,8 +671,8 @@ msgstr "Таймаут офлайн"
 msgid "Set the timeout for device offline detection (seconds). Devices inactive for longer than this time will be marked as offline"
 msgstr "设置设备离线判断的超时时间（秒）。超过此时间未活动的设备将被标记为离线"
 
-msgid "Traffic History Period"
-msgstr "Период истории трафика"
+msgid "Realtime Traffic Period"
+msgstr "Период трафика в реальном времени"
 
 msgid "10 minutes interval uses about 60 KB per device"
 msgstr "Интервал 10 минут использует около 60 КБ на устройство"
@@ -745,3 +745,279 @@ msgstr "Ответы"
 
 msgid "Average Response Time"
 msgstr "Среднее Время Ответа"
+
+msgid "Show More"
+msgstr "Показать больше"
+
+msgid "Show Less"
+msgstr "Показать меньше"
+
+msgid "Add Schedule Rule"
+msgstr "Добавить правило ограничения по расписанию"
+
+msgid "Add Rule"
+msgstr "Добавить правило"
+
+msgid "Set rate limit rules for different time periods"
+msgstr "Установить правила ограничения скорости для разных периодов времени"
+
+msgid "Time Slot"
+msgstr "Временной интервал"
+
+msgid "Days of Week"
+msgstr "Дни недели"
+
+msgid "Mon"
+msgstr "Пн"
+
+msgid "Tue"
+msgstr "Вт"
+
+msgid "Wed"
+msgstr "Ср"
+
+msgid "Thu"
+msgstr "Чт"
+
+msgid "Fri"
+msgstr "Пт"
+
+msgid "Sat"
+msgstr "Сб"
+
+msgid "Sun"
+msgstr "Вс"
+
+msgid "Adding..."
+msgstr "Добавление..."
+
+msgid "Failed to add schedule rule: "
+msgstr "Не удалось добавить правило расписания: "
+
+msgid "Please set time slot"
+msgstr "Пожалуйста, установите временной интервал"
+
+msgid "Please select at least one day"
+msgstr "Пожалуйста, выберите хотя бы один день"
+
+msgid "No scheduled rules yet, click \"Add Rule\" to start setting"
+msgstr "Правил расписания пока нет, нажмите \"Добавить правило\", чтобы начать настройку"
+
+msgid "Loading..."
+msgstr "Загрузка..."
+
+msgid "No schedule rules"
+msgstr "Нет правил расписания"
+
+msgid "Failed to load schedule rules"
+msgstr "Не удалось загрузить правила расписания"
+
+msgid "Delete Schedule Rule"
+msgstr "Удалить правило ограничения по расписанию"
+
+msgid "Are you sure you want to delete this schedule rule?"
+msgstr "Вы уверены, что хотите удалить это правило расписания?"
+
+msgid "Failed to delete schedule rule"
+msgstr "Не удалось удалить правило расписания"
+
+msgid "Confirm"
+msgstr "Подтвердить"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "rule"
+msgstr "правило"
+
+msgid "rules"
+msgstr "правила"
+
+msgid "more"
+msgstr "еще"
+
+msgid "No active rule"
+msgstr "Нет активных правил"
+
+msgid "Schedule Rules"
+msgstr "Правила ограничения по расписанию"
+
+msgid "Upload Statistics"
+msgstr "Статистика отправки"
+
+msgid "Download Statistics"
+msgstr "Статистика загрузки"
+
+msgid "Cumulative Traffic"
+msgstr "Накопительный трафик"
+
+msgid "Daily"
+msgstr "Ежедневно"
+
+msgid "Weekly"
+msgstr "Еженедельно"
+
+msgid "Monthly"
+msgstr "Ежемесячно"
+
+msgid "Statistics"
+msgstr "Статистика"
+
+msgid "Average"
+msgstr "Среднее"
+
+msgid "Maximum"
+msgstr "Максимум"
+
+msgid "Minimum"
+msgstr "Минимум"
+
+msgid "WAN Upload"
+msgstr "Отправка WAN"
+
+msgid "WAN Download"
+msgstr "Загрузка WAN"
+
+msgid "WAN Uploaded"
+msgstr "Отправлено WAN"
+
+msgid "WAN Downloaded"
+msgstr "Загружено WAN"
+
+msgid "Clear Traffic Data"
+msgstr "Очистить данные трафика"
+
+msgid "Are you sure you want to clear all traffic data? This action cannot be undone."
+msgstr "Вы уверены, что хотите очистить все данные трафика? Это действие нельзя отменить."
+
+msgid "Failed to clear traffic data: "
+msgstr "Не удалось очистить данные трафика: "
+
+msgid "Restart Service"
+msgstr "Перезапустить службу"
+
+msgid "Restart Bandix Service"
+msgstr "Перезапустить службу Bandix"
+
+msgid "Are you sure you want to restart the Bandix service?"
+msgstr "Вы уверены, что хотите перезапустить службу Bandix?"
+
+msgid "Failed to restart service: "
+msgstr "Не удалось перезапустить службу: "
+
+msgid "Realtime"
+msgstr "В реальном времени"
+
+msgid "Last 24 Hours"
+msgstr "Последние 24 часа"
+
+msgid "Last 7 Days"
+msgstr "Последние 7 дней"
+
+msgid "Last 30 Days"
+msgstr "Последние 30 дней"
+
+msgid "Last 10 Minutes"
+msgstr "Последние 10 минут"
+
+msgid "Last 15 Minutes"
+msgstr "Последние 15 минут"
+
+msgid "Last 30 Minutes"
+msgstr "Последние 30 минут"
+
+msgid "Last 1 Hour"
+msgstr "Последний 1 час"
+
+msgid "Starting installation..."
+msgstr "Начало установки..."
+
+msgid "Page will refresh in 3 seconds."
+msgstr "Страница обновится через 3 секунды."
+
+msgid "Installation failed"
+msgstr "Установка не удалась"
+
+msgid "Installation failed at step: "
+msgstr "Установка не удалась на шаге: "
+
+msgid "Details: "
+msgstr "Подробности: "
+
+msgid "Installation failed: "
+msgstr "Установка не удалась: "
+
+msgid "Unknown error"
+msgstr "Неизвестная ошибка"
+
+msgid "Service restarted successfully."
+msgstr "Служба успешно перезапущена."
+
+msgid "Service restart may have failed. Please check manually."
+msgstr "Перезапуск службы мог не удаться. Пожалуйста, проверьте вручную."
+
+msgid "Please restart the service."
+msgstr "Пожалуйста, перезапустите службу."
+
+msgid "LuCI App updated successfully!"
+msgstr "Приложение LuCI успешно обновлено!"
+
+msgid "Bandix updated successfully!"
+msgstr "Bandix успешно обновлен!"
+
+msgid "LuCI App has update: "
+msgstr "Приложение LuCI имеет обновление: "
+
+msgid "Bandix has update: "
+msgstr "Bandix имеет обновление: "
+
+msgid "LuCI App is up to date: "
+msgstr "Приложение LuCI актуально: "
+
+msgid "Bandix is up to date: "
+msgstr "Bandix актуален: "
+
+msgid "Updates Available"
+msgstr "Доступны Обновления"
+
+msgid "No Updates Available"
+msgstr "Нет Доступных Обновлений"
+
+msgid "Detected Architecture"
+msgstr "Обнаруженная Архитектура"
+
+msgid "Package Manager"
+msgstr "Менеджер Пакетов"
+
+msgid "LuCI Assets"
+msgstr "Ресурсы LuCI"
+
+msgid "Bandix Assets"
+msgstr "Ресурсы Bandix"
+
+msgid "Failed to check for updates"
+msgstr "Не удалось проверить обновления"
+
+msgid "Failed to check for updates: "
+msgstr "Не удалось проверить обновления: "
+
+msgid "Checking..."
+msgstr "Проверка..."
+
+msgid "Installing..."
+msgstr "Установка..."
+
+msgid "Download and Install"
+msgstr "Скачать и Установить"
+
+msgid "Manual Download"
+msgstr "Ручная Загрузка"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Starting installation... The page will refresh automatically in 5 seconds."
+msgstr "Начало установки... Страница автоматически обновится через 5 секунд."
+
+msgid "Please clear your browser cache manually after updating."
+msgstr "Пожалуйста, вручную очистите кеш браузера после обновления."

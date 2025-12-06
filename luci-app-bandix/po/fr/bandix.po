@@ -671,8 +671,8 @@ msgstr "Délai d'expiration hors ligne"
 msgid "Set the timeout for device offline detection (seconds). Devices inactive for longer than this time will be marked as offline"
 msgstr "设置设备离线判断的超时时间（秒）。超过此时间未活动的设备将被标记为离线"
 
-msgid "Traffic History Period"
-msgstr "Période d'historique du trafic"
+msgid "Realtime Traffic Period"
+msgstr "Période de trafic en temps réel"
 
 msgid "10 minutes interval uses about 60 KB per device"
 msgstr "Intervalle de 10 minutes utilise environ 60 Ko par appareil"
@@ -745,3 +745,279 @@ msgstr "Réponses"
 
 msgid "Average Response Time"
 msgstr "Temps de Réponse Moyen"
+
+msgid "Show More"
+msgstr "Afficher plus"
+
+msgid "Show Less"
+msgstr "Afficher moins"
+
+msgid "Add Schedule Rule"
+msgstr "Ajouter une règle de limitation programmée"
+
+msgid "Add Rule"
+msgstr "Ajouter une règle"
+
+msgid "Set rate limit rules for different time periods"
+msgstr "Définir des règles de limitation pour différentes périodes"
+
+msgid "Time Slot"
+msgstr "Créneau horaire"
+
+msgid "Days of Week"
+msgstr "Jours de la semaine"
+
+msgid "Mon"
+msgstr "Lun"
+
+msgid "Tue"
+msgstr "Mar"
+
+msgid "Wed"
+msgstr "Mer"
+
+msgid "Thu"
+msgstr "Jeu"
+
+msgid "Fri"
+msgstr "Ven"
+
+msgid "Sat"
+msgstr "Sam"
+
+msgid "Sun"
+msgstr "Dim"
+
+msgid "Adding..."
+msgstr "Ajout en cours..."
+
+msgid "Failed to add schedule rule: "
+msgstr "Échec de l'ajout de la règle programmée : "
+
+msgid "Please set time slot"
+msgstr "Veuillez définir un créneau horaire"
+
+msgid "Please select at least one day"
+msgstr "Veuillez sélectionner au moins un jour"
+
+msgid "No scheduled rules yet, click \"Add Rule\" to start setting"
+msgstr "Aucune règle programmée pour le moment, cliquez sur \"Ajouter une règle\" pour commencer"
+
+msgid "Loading..."
+msgstr "Chargement..."
+
+msgid "No schedule rules"
+msgstr "Aucune règle programmée"
+
+msgid "Failed to load schedule rules"
+msgstr "Échec du chargement des règles programmées"
+
+msgid "Delete Schedule Rule"
+msgstr "Supprimer la règle programmée"
+
+msgid "Are you sure you want to delete this schedule rule?"
+msgstr "Êtes-vous sûr de vouloir supprimer cette règle programmée ?"
+
+msgid "Failed to delete schedule rule"
+msgstr "Échec de la suppression de la règle programmée"
+
+msgid "Confirm"
+msgstr "Confirmer"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "rule"
+msgstr "règle"
+
+msgid "rules"
+msgstr "règles"
+
+msgid "more"
+msgstr "plus"
+
+msgid "No active rule"
+msgstr "Aucune règle active"
+
+msgid "Schedule Rules"
+msgstr "Règles de limitation programmée"
+
+msgid "Upload Statistics"
+msgstr "Statistiques d'envoi"
+
+msgid "Download Statistics"
+msgstr "Statistiques de téléchargement"
+
+msgid "Cumulative Traffic"
+msgstr "Trafic cumulé"
+
+msgid "Daily"
+msgstr "Quotidien"
+
+msgid "Weekly"
+msgstr "Hebdomadaire"
+
+msgid "Monthly"
+msgstr "Mensuel"
+
+msgid "Statistics"
+msgstr "Statistiques"
+
+msgid "Average"
+msgstr "Moyenne"
+
+msgid "Maximum"
+msgstr "Maximum"
+
+msgid "Minimum"
+msgstr "Minimum"
+
+msgid "WAN Upload"
+msgstr "Envoi WAN"
+
+msgid "WAN Download"
+msgstr "Téléchargement WAN"
+
+msgid "WAN Uploaded"
+msgstr "Envoyé WAN"
+
+msgid "WAN Downloaded"
+msgstr "Téléchargé WAN"
+
+msgid "Clear Traffic Data"
+msgstr "Effacer les données de trafic"
+
+msgid "Are you sure you want to clear all traffic data? This action cannot be undone."
+msgstr "Êtes-vous sûr de vouloir effacer toutes les données de trafic ? Cette action est irréversible."
+
+msgid "Failed to clear traffic data: "
+msgstr "Échec de l'effacement des données de trafic : "
+
+msgid "Restart Service"
+msgstr "Redémarrer le service"
+
+msgid "Restart Bandix Service"
+msgstr "Redémarrer le service Bandix"
+
+msgid "Are you sure you want to restart the Bandix service?"
+msgstr "Êtes-vous sûr de vouloir redémarrer le service Bandix ?"
+
+msgid "Failed to restart service: "
+msgstr "Échec du redémarrage du service : "
+
+msgid "Realtime"
+msgstr "Temps réel"
+
+msgid "Last 24 Hours"
+msgstr "Dernières 24 heures"
+
+msgid "Last 7 Days"
+msgstr "7 derniers jours"
+
+msgid "Last 30 Days"
+msgstr "30 derniers jours"
+
+msgid "Last 10 Minutes"
+msgstr "10 dernières minutes"
+
+msgid "Last 15 Minutes"
+msgstr "15 dernières minutes"
+
+msgid "Last 30 Minutes"
+msgstr "30 dernières minutes"
+
+msgid "Last 1 Hour"
+msgstr "Dernière heure"
+
+msgid "Starting installation..."
+msgstr "Démarrage de l'installation..."
+
+msgid "Page will refresh in 3 seconds."
+msgstr "La page sera actualisée dans 3 secondes."
+
+msgid "Installation failed"
+msgstr "Échec de l'installation"
+
+msgid "Installation failed at step: "
+msgstr "Échec de l'installation à l'étape : "
+
+msgid "Details: "
+msgstr "Détails : "
+
+msgid "Installation failed: "
+msgstr "Échec de l'installation : "
+
+msgid "Unknown error"
+msgstr "Erreur inconnue"
+
+msgid "Service restarted successfully."
+msgstr "Service redémarré avec succès."
+
+msgid "Service restart may have failed. Please check manually."
+msgstr "Le redémarrage du service a peut-être échoué. Veuillez vérifier manuellement."
+
+msgid "Please restart the service."
+msgstr "Veuillez redémarrer le service."
+
+msgid "LuCI App updated successfully!"
+msgstr "Application LuCI mise à jour avec succès !"
+
+msgid "Bandix updated successfully!"
+msgstr "Bandix mis à jour avec succès !"
+
+msgid "LuCI App has update: "
+msgstr "L'application LuCI a une mise à jour : "
+
+msgid "Bandix has update: "
+msgstr "Bandix a une mise à jour : "
+
+msgid "LuCI App is up to date: "
+msgstr "L'application LuCI est à jour : "
+
+msgid "Bandix is up to date: "
+msgstr "Bandix est à jour : "
+
+msgid "Updates Available"
+msgstr "Mises à jour Disponibles"
+
+msgid "No Updates Available"
+msgstr "Aucune Mise à jour Disponible"
+
+msgid "Detected Architecture"
+msgstr "Architecture Détectée"
+
+msgid "Package Manager"
+msgstr "Gestionnaire de Paquets"
+
+msgid "LuCI Assets"
+msgstr "Ressources LuCI"
+
+msgid "Bandix Assets"
+msgstr "Ressources Bandix"
+
+msgid "Failed to check for updates"
+msgstr "Échec de la vérification des mises à jour"
+
+msgid "Failed to check for updates: "
+msgstr "Échec de la vérification des mises à jour : "
+
+msgid "Checking..."
+msgstr "Vérification..."
+
+msgid "Installing..."
+msgstr "Installation..."
+
+msgid "Download and Install"
+msgstr "Télécharger et Installer"
+
+msgid "Manual Download"
+msgstr "Téléchargement Manuel"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "Starting installation... The page will refresh automatically in 5 seconds."
+msgstr "Démarrage de l'installation... La page sera actualisée automatiquement dans 5 secondes."
+
+msgid "Please clear your browser cache manually after updating."
+msgstr "Veuillez vider manuellement le cache du navigateur après la mise à jour."
