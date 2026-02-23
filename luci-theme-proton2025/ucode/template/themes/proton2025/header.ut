@@ -1,0 +1,288 @@
+{#
+ Proton2025 Theme - Header Template
+ Licensed under Apache License 2.0
+-#}
+
+{%
+	import { getuid, getspnam } from 'luci.core';
+
+	const boardinfo = ubus.call('system', 'board');
+
+	http.prepare_content('text/html; charset=UTF-8');
+-%}
+
+<!DOCTYPE html>
+<html lang="{{ dispatcher.lang }}">
+<head>
+<meta charset="utf-8" />
+<script>
+(function() {
+	// Применяем тему ДО отрисовки страницы, чтобы избежать мерцания
+	var themeMode = localStorage.getItem('proton-theme-mode') || 'dark';
+	if (themeMode === 'light') {
+		document.documentElement.setAttribute('data-theme', 'light');
+		document.documentElement.setAttribute('data-darkmode', 'false');
+	} else {
+		document.documentElement.setAttribute('data-theme', 'dark');
+		document.documentElement.setAttribute('data-darkmode', 'true');
+	}
+	
+	var defaultZoom = '100';
+	var z = localStorage.getItem('proton-zoom') || defaultZoom;
+	document.documentElement.style.zoom = z / 100;
+	var t = localStorage.getItem('proton-transparency');
+	if (t !== 'false') document.documentElement.classList.add('proton-transparency');
+	var r = localStorage.getItem('proton-border-radius');
+	if (r === 'sharp') document.documentElement.classList.add('proton-radius-sharp');
+	else if (r === 'extra') document.documentElement.classList.add('proton-radius-extra');
+	var a = localStorage.getItem('proton-accent-color') || 'blue';
+	var c = {
+		default: { accent: '#4b5563', hover: '#374151', glow: 'rgba(75, 85, 99, 0.22)' },
+		blue:    { accent: '#5e9eff', hover: '#7db2ff', glow: 'rgba(94, 158, 255, 0.18)' },
+		purple:  { accent: '#a78bfa', hover: '#c3b4ff', glow: 'rgba(167, 139, 250, 0.22)' },
+		green:   { accent: '#34d399', hover: '#2fb885', glow: 'rgba(52, 211, 153, 0.18)' },
+		orange:  { accent: '#fb923c', hover: '#f47c1f', glow: 'rgba(251, 146, 60, 0.20)' },
+		red:     { accent: '#f87171', hover: '#f04c4c', glow: 'rgba(248, 113, 113, 0.20)' }
+	};
+	if (c[a]) {
+		document.documentElement.style.setProperty('--proton-accent', c[a].accent);
+		document.documentElement.style.setProperty('--proton-accent-hover', c[a].hover);
+		document.documentElement.style.setProperty('--proton-accent-glow', c[a].glow);
+	}
+	if (localStorage.getItem('proton-animations') === 'false') document.documentElement.classList.add('proton-no-animations');
+})();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0f1419" />
+<meta name="color-scheme" content="dark" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+/* Critical: keep header height stable before cascade.css loads */
+:root {
+	--proton-page-max-width: 990px;
+	--proton-page-gutter: 20px;
+}
+
+#menubar {
+	min-height: 64px;
+	padding: 0;
+}
+
+#menubar-inner {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	height: 64px;
+	max-width: var(--proton-page-max-width);
+	margin: 0 auto;
+	padding: 0 var(--proton-page-gutter);
+}
+
+/* Critical: prevent "Loading view…" flash/jump before cascade.css is loaded */
+#maincontent > .spinning,
+#maincontent > p.spinning,
+#view > .spinning,
+#view > p.spinning {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	width: 100%;
+	min-height: calc(100vh - 64px);
+	padding: 24px !important;
+	text-align: center;
+	padding-left: 0 !important;
+}
+
+#maincontent > .spinning::before,
+#maincontent > p.spinning::before,
+#view > .spinning::before,
+#view > p.spinning::before {
+	position: static;
+	left: auto;
+	top: auto;
+	margin-top: 0;
+}
+</style>
+<link rel="stylesheet" media="screen" href="{{ media }}/cascade.css" />
+<link rel="icon" href="{{ media }}/logo.svg" sizes="any" />
+<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
+<script src="{{ resource }}/promis.min.js"></script>
+<script src="{{ resource }}/luci.js"></script>
+<script src="{{ resource }}/xhr.js"></script>
+<script src="{{ resource }}/form.js"></script>
+<script src="{{ resource }}/ui.js"></script>
+<script src="{{ resource }}/cbi.js"></script>
+<script src="{{ media }}/translations.js"></script>
+<script src="{{ media }}/settings-sync.js" defer></script>
+<script src="{{ media }}/services-widget.js" defer></script>
+<script src="{{ media }}/custom-pages.js" defer></script>
+
+<script>
+(function() {
+	'use strict';
+
+	var mediaBase = '{{ media }}';
+	var localIconBase = mediaBase + '/icons/';
+
+	// Паттерны для разных типов иконок
+	var iconPatterns = [
+		{ re: /\/luci-static\/resources\/icons\/signal-(none|\d{3}-\d{3})\.svg$/, prefix: 'proton-signal-' },
+		{ re: /\/luci-static\/resources\/icons\/(ethernet|wifi|bridge|tunnel|wireguard|switch|alias|vlan|vrf|port_up|port_down|loading|mobile|radio)(_disabled)?\.svg$/, prefix: 'proton-' }
+	];
+
+	function remapIcon(img) {
+		if (!img || img.tagName !== 'IMG') return;
+
+		var rawSrc = img.getAttribute('src') || img.src;
+		if (!rawSrc) return;
+
+		var url;
+		try {
+			url = new URL(rawSrc, window.location.href);
+		} catch (e) {
+			return;
+		}
+
+		for (var i = 0; i < iconPatterns.length; i++) {
+			var match = url.pathname && url.pathname.match(iconPatterns[i].re);
+			if (match) {
+				var iconName = match[1];
+				var suffix = match[2] || '';
+
+				// Для физических радио (radio0, radio1) используем иконку вышки вместо wifi
+				if (iconName === 'wifi') {
+					var badge = img.closest('.ifacebadge');
+					if (badge) {
+						var text = badge.textContent.trim();
+						if (/^radio\d+$/.test(text)) {
+							iconName = 'radio';
+						}
+					}
+				}
+
+				var filename = iconPatterns[i].prefix + iconName + suffix + '.svg';
+				img.setAttribute('src', localIconBase + filename);
+				return;
+			}
+		}
+	}
+
+	function scan(root) {
+		if (!root || root.nodeType !== 1) return;
+		if (root.tagName === 'IMG') remapIcon(root);
+		var imgs = root.querySelectorAll ? root.querySelectorAll('img') : [];
+		for (var i = 0; i < imgs.length; i++) remapIcon(imgs[i]);
+	}
+
+	// Проставляем data-freq для WiFi-сетей на основе родительского radio
+	// Работает с любыми section-id: wifinet*, default_radio*, custom_name, и т.д.
+	function propagateDataFreq() {
+		var table = document.querySelector('#cbi-wireless table.cbi-section-table');
+		if (!table) return;
+
+		var rows = table.querySelectorAll('tr[data-section-id]');
+		var currentFreq = null;
+
+		for (var i = 0; i < rows.length; i++) {
+			var row = rows[i];
+			var sectionId = row.getAttribute('data-section-id') || '';
+
+			// Если это radio-устройство (radio0, radio1, ...) — запоминаем его частоту
+			if (/^radio\d+$/.test(sectionId)) {
+				currentFreq = row.getAttribute('data-freq');
+				continue;
+			}
+
+			// Всё остальное — WiFi-сети. Если нет data-freq, проставляем от родительского radio
+			if (!row.hasAttribute('data-freq') && currentFreq) {
+				row.setAttribute('data-freq', currentFreq);
+			}
+		}
+	}
+
+	function start() {
+		scan(document.documentElement);
+		propagateDataFreq();
+
+		var mo = new MutationObserver(function(mutations) {
+			for (var i = 0; i < mutations.length; i++) {
+				var m = mutations[i];
+				if (m.type === 'attributes' && m.attributeName === 'src') {
+					remapIcon(m.target);
+					continue;
+				}
+				if (m.type === 'childList') {
+					for (var j = 0; j < m.addedNodes.length; j++) {
+						scan(m.addedNodes[j]);
+					}
+				}
+			}
+			// Всегда проверяем data-freq после любых изменений в DOM
+			propagateDataFreq();
+		});
+
+		mo.observe(document.documentElement, {
+			subtree: true,
+			childList: true,
+			attributes: true,
+			attributeFilter: ['src']
+		});
+	}
+
+	if (document.readyState === 'loading')
+		document.addEventListener('DOMContentLoaded', start);
+	else
+		start();
+})();
+</script>
+<title>{{ striptags(`${dispatched ? `${dispatched.title} | ` : ''}${boardinfo.hostname ?? '?'}`) }} | LuCI</title>
+{% if (css): %}
+<style title="text/css">{{ css }}</style>
+{% endif %}
+</head>
+{% let __page = join('-', ctx.request_path); %}
+{% if (!__page && ctx.dispatch_path): __page = join('-', ctx.dispatch_path); endif %}
+<body class="lang_{{ dispatcher.lang }}" data-page="{{ entityencode(__page, true) }}">
+
+<p class="skiplink">
+<span id="skiplink1"><a href="#navigation">{{ _('Skip to navigation') }}</a></span>
+<span id="skiplink2"><a href="#content">{{ _('Skip to content') }}</a></span>
+</p>
+
+<div id="menubar">
+	<div id="menubar-inner">
+		<h2 class="navigation"><a id="navigation" name="navigation">{{ _('Navigation') }}</a></h2>
+
+		<span class="hostname"><a href="/">{{ striptags(boardinfo.hostname ?? '?') }}</a></span>
+		<div id="mainmenu"></div>
+		<span id="indicators"></span>
+	</div>
+</div>
+
+<div id="modemenu" style="display:none"></div>
+
+<div id="maincontainer">
+	<div id="maincontent">
+		{% if (getuid() == 0 && getspnam('root')?.pwdp === '' && join('-', ctx.request_path) != 'admin-system-admin'): %}
+		<div class="alert-message warning">
+			<h4>{{ _('No password set!') }}</h4>
+			<p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
+			{% if (dispatcher.lookup("admin/system/admin")): %}
+				<div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a></div>
+			{% endif %}
+		</div>
+		{% endif %}
+
+		{% if (boardinfo.rootfs_type == "initramfs"): %}
+		<div class="alert-message warning">
+			<h4>{{ _('System running in recovery (initramfs) mode.') }}</h4>
+			<p>{{ _('No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade') }}</p>
+			{% if (dispatcher.lookup("admin/system/flash")): %}
+			  <div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/flash") }}">{{ _('Go to firmware upgrade...') }}</a></div>
+			{% endif %}
+		</div>
+		{% endif %}
+
+		<div id="tabmenu" style="display:none"></div>
